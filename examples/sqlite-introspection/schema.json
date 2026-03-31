@@ -1,0 +1,31 @@
+{
+  "dialect": "sqlite3",
+  "tables": [
+    {
+      "name": "projects",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "tenantId",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "deletedAt",
+          "type": "TEXT",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}
