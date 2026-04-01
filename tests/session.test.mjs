@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -11,7 +11,11 @@ import {
   hasOne,
 } from '@objx/core';
 import {
+  defineMigration,
+  defineSeed,
+  runMigrationSchema,
   runCodegenCli,
+  runSeedSchema,
 } from '@objx/codegen';
 import {
   ObjxSqlCompiler,
@@ -34,6 +38,10 @@ import {
   createPostgresDriver,
   createPostgresSession,
 } from '../packages/postgres-driver/dist/index.js';
+import {
+  createMySqlDriver,
+  createMySqlSession,
+} from '../packages/mysql-driver/dist/index.js';
 
 class FakeDriver {
   constructor() {
@@ -70,6 +78,14 @@ class FakeDriver {
       ['users', []],
       ['authors', [{ id: '1', name: 'Ada' }]],
       ['badges', [{ id: '1', label: 'Core', ownerId: '1' }]],
+      ['collars', [{ id: '100', petId: '10', color: 'Red' }]],
+      [
+        'pet_toys',
+        [
+          { id: '200', petId: '10', name: 'Ball' },
+          { id: '201', petId: '11', name: 'Bone' },
+        ],
+      ],
       [
         'articles',
         [
@@ -89,6 +105,8 @@ class FakeDriver {
       ['users', 0],
       ['authors', 1],
       ['badges', 1],
+      ['collars', 100],
+      ['pet_toys', 201],
       ['articles', 2],
       ['person_pets', 0],
     ]);
@@ -632,6 +650,205 @@ class FakePostgresPool {
   }
 }
 
+class FakeMySqlPoolConnection {
+  constructor(pool) {
+    this.pool = pool;
+    this.released = false;
+  }
+
+  async query(sqlText, parameters = []) {
+    return this.pool.query(sqlText, parameters);
+  }
+
+  release() {
+    if (this.released) {
+      return;
+    }
+
+    this.released = true;
+    this.pool.releaseCount += 1;
+  }
+}
+
+class FakeMySqlPool {
+  constructor() {
+    this.rows = [];
+    this.nextId = 0;
+    this.transactionScopes = [];
+    this.connectCount = 0;
+    this.releaseCount = 0;
+    this.ended = false;
+  }
+
+  async query(sqlText, parameters = []) {
+    return this.#execute(sqlText, parameters);
+  }
+
+  async getConnection() {
+    this.connectCount += 1;
+    return new FakeMySqlPoolConnection(this);
+  }
+
+  async end() {
+    this.ended = true;
+  }
+
+  #cloneRows() {
+    return this.rows.map((row) => ({ ...row }));
+  }
+
+  #findScopeIndex(name) {
+    for (let index = this.transactionScopes.length - 1; index >= 0; index -= 1) {
+      if (this.transactionScopes[index].name === name) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  #parseSavepointName(sqlText, command) {
+    const quoted = new RegExp(
+      `^${command}\\s+` + '`([^`]+)`$',
+      'i',
+    ).exec(sqlText);
+
+    if (quoted) {
+      return quoted[1];
+    }
+
+    const bare = new RegExp(`^${command}\\s+([^\\s]+)$`, 'i').exec(sqlText);
+    return bare?.[1];
+  }
+
+  async #execute(sqlText, parameters) {
+    const compactSql = sqlText.trim().replace(/\s+/g, ' ');
+    const normalizedSql = compactSql.toLowerCase();
+
+    if (normalizedSql === 'start transaction' || normalizedSql === 'begin') {
+      this.transactionScopes.push({
+        snapshot: this.#cloneRows(),
+      });
+
+      return [{ affectedRows: 0 }];
+    }
+
+    if (normalizedSql === 'commit') {
+      this.transactionScopes = [];
+      return [{ affectedRows: 0 }];
+    }
+
+    if (normalizedSql === 'rollback') {
+      const rootScope = this.transactionScopes[0];
+
+      if (rootScope) {
+        this.rows = rootScope.snapshot.map((row) => ({ ...row }));
+      }
+
+      this.transactionScopes = [];
+      return [{ affectedRows: 0 }];
+    }
+
+    if (normalizedSql.startsWith('savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse savepoint statement: ${sqlText}`);
+      }
+
+      this.transactionScopes.push({
+        name: savepointName,
+        snapshot: this.#cloneRows(),
+      });
+
+      return [{ affectedRows: 0 }];
+    }
+
+    if (normalizedSql.startsWith('rollback to savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'rollback to savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse rollback savepoint statement: ${sqlText}`);
+      }
+
+      const savepointIndex = this.#findScopeIndex(savepointName);
+
+      if (savepointIndex >= 0) {
+        const scope = this.transactionScopes[savepointIndex];
+        this.rows = scope.snapshot.map((row) => ({ ...row }));
+        this.transactionScopes = this.transactionScopes.slice(0, savepointIndex + 1);
+      }
+
+      return [{ affectedRows: 0 }];
+    }
+
+    if (normalizedSql.startsWith('release savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'release savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse release savepoint statement: ${sqlText}`);
+      }
+
+      const savepointIndex = this.#findScopeIndex(savepointName);
+
+      if (savepointIndex >= 0) {
+        this.transactionScopes.splice(savepointIndex, 1);
+      }
+
+      return [{ affectedRows: 0 }];
+    }
+
+    if (/^insert into `task_items`/i.test(compactSql)) {
+      const columnsMatch = /insert into `task_items`\s+\(([^)]+)\)/i.exec(compactSql);
+
+      if (!columnsMatch) {
+        throw new Error(`Unable to parse insert columns from SQL: ${sqlText}`);
+      }
+
+      const row = {};
+      const columns = columnsMatch[1]
+        .split(',')
+        .map((column) => column.trim().replace(/`/g, ''));
+
+      columns.forEach((column, index) => {
+        row[column] = parameters[index];
+      });
+
+      if (row.id === undefined) {
+        this.nextId += 1;
+        row.id = this.nextId;
+      } else {
+        this.nextId = Math.max(this.nextId, Number(row.id));
+      }
+
+      this.rows.push({ ...row });
+
+      return [
+        {
+          affectedRows: 1,
+          insertId: Number(row.id),
+        },
+      ];
+    }
+
+    if (/^select\b/i.test(compactSql) && /from `task_items`/i.test(compactSql)) {
+      let rows = this.#cloneRows();
+
+      if (/where `task_items`\.`id` = \?/i.test(compactSql)) {
+        rows = rows.filter((row) => String(row.id) === String(parameters[0]));
+      }
+
+      if (/order by `task_items`\.`id`/i.test(compactSql)) {
+        rows.sort((left, right) => Number(left.id) - Number(right.id));
+      }
+
+      return [rows];
+    }
+
+    return [{ affectedRows: 0 }];
+  }
+}
+
 const Pet = defineModel({
   name: 'Pet',
   table: 'pets',
@@ -672,6 +889,68 @@ const SqliteTask = defineModel({
     done: col.boolean(),
     createdAt: col.timestamp().nullable(),
   },
+});
+
+const Collar = defineModel({
+  name: 'Collar',
+  table: 'collars',
+  columns: {
+    id: col.int().primary(),
+    petId: col.int(),
+    color: col.text(),
+  },
+});
+
+const PetToy = defineModel({
+  name: 'PetToy',
+  table: 'pet_toys',
+  columns: {
+    id: col.int().primary(),
+    petId: col.int(),
+    name: col.text(),
+  },
+});
+
+const PetWithCollar = defineModel({
+  name: 'PetWithCollar',
+  table: 'pets',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+    ownerId: col.int().nullable(),
+  },
+  relations: (pet) => ({
+    collar: hasOne(() => Collar, {
+      from: pet.columns.id,
+      to: Collar.columns.petId,
+    }),
+    toys: hasMany(() => PetToy, {
+      from: pet.columns.id,
+      to: PetToy.columns.petId,
+    }),
+  }),
+});
+
+const PersonWithNestedPets = defineModel({
+  name: 'PersonWithNestedPets',
+  table: 'people',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+    active: col.boolean(),
+    profile: col.json(),
+    createdAt: col.timestamp(),
+  },
+  relations: (person) => ({
+    pets: hasMany(() => PetWithCollar, {
+      from: person.columns.id,
+      to: PetWithCollar.columns.ownerId,
+    }),
+    favoritePet: belongsToOne(() => PetWithCollar, {
+      from: person.columns.id,
+      to: PetWithCollar.columns.ownerId,
+    }),
+  }),
 });
 
 const Person = defineModel({
@@ -807,6 +1086,65 @@ const tests = [
       );
       assert.equal(compiled.metadata.dialect, 'sqlite3');
       assert.equal(compiled.parameters.length, 0);
+    },
+  ],
+  [
+    'joinRelated resolves composed relation expressions',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        PersonWithNestedPets.query().joinRelated({
+          pets: {
+            collar: true,
+            toys: true,
+          },
+        }),
+      );
+
+      const petJoinMatches = compiled.sql.match(/join "pets"/gi) ?? [];
+
+      assert.equal(petJoinMatches.length, 1);
+      assert.match(
+        compiled.sql,
+        /join "pets" on "people"\."id" = "pets"\."ownerId"/i,
+      );
+      assert.match(
+        compiled.sql,
+        /join "collars" on "pets"\."id" = "collars"\."petId"/i,
+      );
+      assert.match(
+        compiled.sql,
+        /join "pet_toys" on "pets"\."id" = "pet_toys"\."petId"/i,
+      );
+    },
+  ],
+  [
+    'compiler composes grouped and/or predicates without raw SQL',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        Person.query().where(({ id, name, active, createdAt }, operators) =>
+          operators.and(
+            operators.or(
+              operators.eq(id, 1),
+              operators.eq(name, 'Ada'),
+            ),
+            operators.eq(active, true),
+            operators.isNotNull(createdAt),
+          ),
+        ),
+      );
+
+      assert.match(
+        compiled.sql,
+        /where \(\("people"\."id" = \$1 or "people"\."name" = \$2\) and "people"\."active" = \$3 and "people"\."createdAt" is not null\)/i,
+      );
+      assert.deepEqual(
+        compiled.parameters.map((parameter) => parameter.value),
+        [1, 'Ada', true],
+      );
     },
   ],
   [
@@ -974,6 +1312,319 @@ const tests = [
     },
   ],
   [
+    'codegen cli generates migration and seed schema templates',
+    async () => {
+      const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-schema-template-'));
+      const outDir = 'db';
+      const stdout = [];
+      const stderr = [];
+
+      try {
+        const exitCode = await runCodegenCli(
+          ['template', '--template', 'migration-seed-schemas', '--out', outDir],
+          {
+            cwd: tempDir,
+            stdout(message) {
+              stdout.push(message);
+            },
+            stderr(message) {
+              stderr.push(message);
+            },
+          },
+        );
+
+        const migrationContents = await readFile(
+          path.join(tempDir, outDir, 'migrations', '000001_init.migration.mjs'),
+          'utf8',
+        );
+        const seedContents = await readFile(
+          path.join(tempDir, outDir, 'seeds', '000001_projects.seed.mjs'),
+          'utf8',
+        );
+        const readmeContents = await readFile(
+          path.join(tempDir, outDir, 'README.md'),
+          'utf8',
+        );
+
+        assert.equal(exitCode, 0);
+        assert.deepEqual(stderr, []);
+        assert.match(stdout[0], /Generated template "migration-seed-schemas"/i);
+        assert.match(migrationContents, /defineMigration/);
+        assert.match(migrationContents, /name: '000001_init'/);
+        assert.match(seedContents, /defineSeed/);
+        assert.match(seedContents, /name: '000001_projects'/);
+        assert.match(readmeContents, /typed OBJX migration and seed schemas/i);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    },
+  ],
+  [
+    'codegen migration and seed schemas run typed operations',
+    async () => {
+      const executed = [];
+      const context = {
+        dialect: 'sqlite3',
+        async execute(sqlText) {
+          executed.push(sqlText);
+        },
+      };
+
+      const migration = defineMigration({
+        name: '000001_init',
+        up: [
+          'create table projects (id integer primary key);',
+          'create index idx_projects_id on projects(id);',
+        ],
+        down: async ({ execute }) => {
+          await execute('drop index if exists idx_projects_id;');
+          await execute('drop table if exists projects;');
+        },
+      });
+
+      const seed = defineSeed({
+        name: '000001_projects',
+        run: async ({ execute }) => {
+          await execute(
+            "insert into projects (id) values (1);",
+          );
+        },
+        revert: [
+          'delete from projects where id = 1;',
+        ],
+      });
+
+      await runMigrationSchema(migration, context, 'up');
+      await runSeedSchema(seed, context, 'run');
+      await runSeedSchema(seed, context, 'revert');
+      await runMigrationSchema(migration, context, 'down');
+
+      assert.deepEqual(executed, [
+        'create table projects (id integer primary key);',
+        'create index idx_projects_id on projects(id);',
+        'insert into projects (id) values (1);',
+        'delete from projects where id = 1;',
+        'drop index if exists idx_projects_id;',
+        'drop table if exists projects;',
+      ]);
+    },
+  ],
+  [
+    'codegen cli runs sqlite migration and seed runners',
+    async () => {
+      const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-schema-runner-'));
+      const databasePath = path.join(tempDir, 'app.sqlite');
+      const migrationDir = path.join(tempDir, 'db', 'migrations');
+      const seedDir = path.join(tempDir, 'db', 'seeds');
+
+      try {
+        await mkdir(migrationDir, { recursive: true });
+        await mkdir(seedDir, { recursive: true });
+
+        await writeFile(
+          path.join(migrationDir, '000001_create_projects.migration.mjs'),
+          `import { defineMigration } from '@objx/codegen';
+
+export default defineMigration({
+  name: '000001_create_projects',
+  up: [
+    'create table projects (id integer primary key, name text not null);',
+  ],
+  down: [
+    'drop table if exists projects;',
+  ],
+});
+`,
+          'utf8',
+        );
+
+        await writeFile(
+          path.join(migrationDir, '000002_index_projects_name.migration.mjs'),
+          `import { defineMigration } from '@objx/codegen';
+
+export default defineMigration({
+  name: '000002_index_projects_name',
+  up: [
+    'create index idx_projects_name on projects(name);',
+  ],
+  down: [
+    'drop index if exists idx_projects_name;',
+  ],
+});
+`,
+          'utf8',
+        );
+
+        await writeFile(
+          path.join(seedDir, '000001_projects.seed.mjs'),
+          `import { defineSeed } from '@objx/codegen';
+
+export default defineSeed({
+  name: '000001_projects',
+  run: [
+    "insert into projects (id, name) values (1, 'Alpha');",
+    "insert into projects (id, name) values (2, 'Beta');",
+  ],
+  revert: [
+    'delete from projects where id in (1, 2);',
+  ],
+});
+`,
+          'utf8',
+        );
+
+        const stdout = [];
+        const stderr = [];
+
+        const migrateUpExitCode = await runCodegenCli(
+          [
+            'migrate',
+            '--dialect',
+            'sqlite3',
+            '--database',
+            databasePath,
+            '--dir',
+            'db/migrations',
+            '--direction',
+            'up',
+          ],
+          {
+            cwd: tempDir,
+            stdout(message) {
+              stdout.push(message);
+            },
+            stderr(message) {
+              stderr.push(message);
+            },
+          },
+        );
+
+        assert.equal(migrateUpExitCode, 0);
+        assert.deepEqual(stderr, []);
+        assert.match(stdout[0], /Migrations up: executed 2 of 2/i);
+
+        const afterMigrationDatabase = new DatabaseSync(databasePath);
+        const projectsTable = afterMigrationDatabase
+          .prepare(`select name from sqlite_master where type = 'table' and name = 'projects'`)
+          .get();
+        const migrationHistoryCount = afterMigrationDatabase
+          .prepare('select count(*) as total from objx_migration_history')
+          .get();
+        afterMigrationDatabase.close();
+
+        assert.equal(projectsTable?.name, 'projects');
+        assert.equal(Number(migrationHistoryCount?.total ?? 0), 2);
+
+        const seedStdout = [];
+        const seedStderr = [];
+        const seedRunExitCode = await runCodegenCli(
+          [
+            'seed',
+            '--dialect',
+            'sqlite3',
+            '--database',
+            databasePath,
+            '--dir',
+            'db/seeds',
+            '--direction',
+            'run',
+          ],
+          {
+            cwd: tempDir,
+            stdout(message) {
+              seedStdout.push(message);
+            },
+            stderr(message) {
+              seedStderr.push(message);
+            },
+          },
+        );
+
+        assert.equal(seedRunExitCode, 0);
+        assert.deepEqual(seedStderr, []);
+        assert.match(seedStdout[0], /Seeds run: executed 1 of 1/i);
+
+        const afterSeedDatabase = new DatabaseSync(databasePath);
+        const projectRows = afterSeedDatabase
+          .prepare('select count(*) as total from projects')
+          .get();
+        const seedHistoryCount = afterSeedDatabase
+          .prepare('select count(*) as total from objx_seed_history')
+          .get();
+        afterSeedDatabase.close();
+
+        assert.equal(Number(projectRows?.total ?? 0), 2);
+        assert.equal(Number(seedHistoryCount?.total ?? 0), 1);
+
+        const revertSeedExitCode = await runCodegenCli(
+          [
+            'seed',
+            '--dialect',
+            'sqlite3',
+            '--database',
+            databasePath,
+            '--dir',
+            'db/seeds',
+            '--direction',
+            'revert',
+          ],
+          {
+            cwd: tempDir,
+          },
+        );
+
+        assert.equal(revertSeedExitCode, 0);
+
+        const afterSeedRevertDatabase = new DatabaseSync(databasePath);
+        const projectRowsAfterRevert = afterSeedRevertDatabase
+          .prepare('select count(*) as total from projects')
+          .get();
+        const seedHistoryAfterRevert = afterSeedRevertDatabase
+          .prepare('select count(*) as total from objx_seed_history')
+          .get();
+        afterSeedRevertDatabase.close();
+
+        assert.equal(Number(projectRowsAfterRevert?.total ?? 0), 0);
+        assert.equal(Number(seedHistoryAfterRevert?.total ?? 0), 0);
+
+        const migrateDownExitCode = await runCodegenCli(
+          [
+            'migrate',
+            '--dialect',
+            'sqlite3',
+            '--database',
+            databasePath,
+            '--dir',
+            'db/migrations',
+            '--direction',
+            'down',
+            '--steps',
+            '2',
+          ],
+          {
+            cwd: tempDir,
+          },
+        );
+
+        assert.equal(migrateDownExitCode, 0);
+
+        const afterDownDatabase = new DatabaseSync(databasePath);
+        const projectsTableAfterDown = afterDownDatabase
+          .prepare(`select name from sqlite_master where type = 'table' and name = 'projects'`)
+          .get();
+        const migrationHistoryAfterDown = afterDownDatabase
+          .prepare('select count(*) as total from objx_migration_history')
+          .get();
+        afterDownDatabase.close();
+
+        assert.equal(projectsTableAfterDown, undefined);
+        assert.equal(Number(migrationHistoryAfterDown?.total ?? 0), 0);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    },
+  ],
+  [
     'sqlite driver executes queries and transactions against a real database',
     async () => {
       const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-sqlite-driver-'));
@@ -1060,6 +1711,25 @@ const tests = [
           );
         });
 
+        const groupedRows = await session.execute(
+          SqliteTask.query()
+            .where(({ done, title }, operators) =>
+              operators.or(
+                operators.eq(done, true),
+                operators.like(title, 'Ship%'),
+              ),
+            )
+            .orderBy(({ id }) => id),
+          {
+            hydrate: true,
+          },
+        );
+
+        assert.deepEqual(
+          groupedRows.map((row) => row.title),
+          ['Ship OBJX', 'Outer'],
+        );
+
         const rows = await session.execute(SqliteTask.query().orderBy(({ id }) => id), {
           hydrate: true,
         });
@@ -1102,6 +1772,105 @@ const tests = [
         assert.equal(inserted[0].id, 1);
         assert.equal(inserted[0].done, false);
         assert.ok(inserted[0].createdAt instanceof Date);
+
+        await assert.rejects(
+          () =>
+            session.transaction(async (transactionSession) => {
+              await transactionSession.execute(
+                SqliteTask.insert({
+                  title: 'Rollback me',
+                  done: true,
+                }),
+              );
+
+              throw new Error('rollback');
+            }),
+          (error) => error?.cause?.message === 'rollback',
+        );
+
+        await session.transaction(async (transactionSession) => {
+          await transactionSession.execute(
+            SqliteTask.insert({
+              title: 'Outer',
+              done: true,
+            }),
+          );
+
+          await assert.rejects(
+            () =>
+              transactionSession.transaction(async (nestedSession) => {
+                await nestedSession.execute(
+                  SqliteTask.insert({
+                    title: 'Inner rollback',
+                    done: true,
+                  }),
+                );
+
+                throw new Error('nested rollback');
+              }),
+            (error) => error?.cause?.message === 'nested rollback',
+          );
+
+          await transactionSession.execute(
+            SqliteTask.insert({
+              title: 'Outer after nested',
+              done: false,
+            }),
+          );
+        });
+
+        const rows = await session.execute(SqliteTask.query().orderBy(({ id }) => id), {
+          hydrate: true,
+        });
+
+        assert.deepEqual(
+          rows.map((row) => row.title),
+          ['Ship OBJX', 'Outer', 'Outer after nested'],
+        );
+        assert.equal(pool.connectCount, 2);
+        assert.equal(pool.releaseCount, 2);
+      } finally {
+        await driver.close();
+      }
+
+      assert.equal(pool.ended, true);
+    },
+  ],
+  [
+    'mysql driver executes queries and nested transactions via a pool-compatible adapter',
+    async () => {
+      const pool = new FakeMySqlPool();
+      const driver = createMySqlDriver({
+        pool,
+        closePoolOnDispose: true,
+      });
+      const session = createMySqlSession({
+        driver,
+      });
+
+      try {
+        await session.execute(
+          SqliteTask.insert({
+            title: 'Ship OBJX',
+            done: false,
+            createdAt: '2026-03-31T10:00:00.000Z',
+          }),
+          {
+            hydrate: true,
+          },
+        );
+
+        const firstRows = await session.execute(
+          SqliteTask.query().where(({ id }, operators) => operators.eq(id, 1)),
+          {
+            hydrate: true,
+          },
+        );
+
+        assert.equal(firstRows.length, 1);
+        assert.equal(firstRows[0].id, 1);
+        assert.equal(firstRows[0].done, false);
+        assert.ok(firstRows[0].createdAt instanceof Date);
 
         await assert.rejects(
           () =>
@@ -1321,6 +2090,56 @@ const tests = [
       assert.equal(rows[0].pets.length, 2);
       assert.equal(rows[0].pets[0].ownerId, 1);
       assert.equal(rows[0].pets[1].name, 'Lambda');
+    },
+  ],
+  [
+    'session eager loads nested relations',
+    async () => {
+      const session = createSession({
+        driver: new FakeDriver(),
+      });
+
+      const rows = await session.execute(
+        PersonWithNestedPets.query().withRelated('pets.collar'),
+        {
+          hydrate: true,
+        },
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].pets.length, 2);
+      assert.equal(rows[0].pets[0].collar.color, 'Red');
+      assert.equal(rows[0].pets[1].collar, null);
+    },
+  ],
+  [
+    'session eager loads composed relation expressions',
+    async () => {
+      const session = createSession({
+        driver: new FakeDriver(),
+      });
+
+      const rows = await session.execute(
+        PersonWithNestedPets.query().withRelated({
+          pets: {
+            collar: true,
+            toys: true,
+          },
+          favoritePet: true,
+        }),
+        {
+          hydrate: true,
+        },
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].pets.length, 2);
+      assert.equal(rows[0].pets[0].collar.color, 'Red');
+      assert.equal(rows[0].pets[0].toys.length, 1);
+      assert.equal(rows[0].pets[0].toys[0].name, 'Ball');
+      assert.equal(rows[0].pets[1].toys.length, 1);
+      assert.equal(rows[0].pets[1].toys[0].name, 'Bone');
+      assert.equal(rows[0].favoritePet.name, 'Turing');
     },
   ],
   [

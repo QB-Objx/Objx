@@ -134,6 +134,8 @@ Assim, a engine pode suportar:
   - driver oficial SQLite para sessao/runtime
 - `@objx/postgres-driver`
   - driver oficial Postgres para sessao/runtime
+- `@objx/mysql-driver`
+  - driver oficial MySQL para sessao/runtime
 
 ### Camadas
 
@@ -294,6 +296,50 @@ Um plugin deve poder:
 - CLI
 - templates
 - docs e exemplos reais
+
+## Exemplos Atuais
+
+- `examples/sqlite-introspection`: fluxo de introspecao e modelo gerado
+- `examples/complex-runtime`: fluxo completo com plugins, graph operations, eager nested e expressoes compostas de relacao
+- `examples/benchmarks`: suite publica e reproduzivel de benchmark para compilacao SQL e runtime
+
+## Benchmarks Publicos
+
+Comando padrao:
+
+```bash
+npm run benchmark
+```
+
+Referencia:
+
+- `examples/benchmarks/README.md`
+
+## Schemas De Migrations E Seeds
+
+Gerar estrutura tipada de migrations/seeds:
+
+```bash
+npm run codegen -- template --template migration-seed-schemas --out ./db
+```
+
+Arquivos gerados:
+
+- `db/migrations/000001_init.migration.mjs`
+- `db/seeds/000001_projects.seed.mjs`
+- `db/README.md`
+
+Executar migrations:
+
+```bash
+npm run codegen -- migrate --dialect sqlite3 --database ./app.sqlite --dir ./db/migrations --direction up
+```
+
+Executar seeds:
+
+```bash
+npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/seeds --direction run
+```
 
 ## Ordem Recomendada De Implementacao
 

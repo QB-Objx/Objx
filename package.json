@@ -8,10 +8,14 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "benchmark": "npm run build && node examples/benchmarks/src/run.mjs",
+    "changeset": "npx @changesets/cli@2.29.7",
     "codegen": "node packages/codegen/dist/cli.js",
     "lint": "eslint .",
+    "release": "npx @changesets/cli@2.29.7 publish",
     "typecheck": "tsc -b --pretty",
-    "test": "npm run build && node tests/session.test.mjs"
+    "test": "npm run build && node tests/session.test.mjs",
+    "version-packages": "npx @changesets/cli@2.29.7 version"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

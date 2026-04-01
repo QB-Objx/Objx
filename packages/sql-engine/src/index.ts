@@ -341,6 +341,8 @@ function uniqueNonNullableValues(values: readonly unknown[]): readonly unknown[]
   return [...unique];
 }
 
+type EagerRelationTree = Map<string, EagerRelationTree>;
+
 const SOFT_DELETE_METADATA_KEY = 'softDelete';
 const TENANT_SCOPE_METADATA_KEY = 'tenantScope';
 
@@ -841,6 +843,16 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compilePredicate(predicate: PredicateNode, context: CompilationContext): string {
+    if (predicate.kind === 'logical-predicate') {
+      if (predicate.predicates.length === 0) {
+        return predicate.operator === 'and' ? '1 = 1' : '1 = 0';
+      }
+
+      return `(${predicate.predicates
+        .map((item) => this.#compilePredicate(item, context))
+        .join(` ${predicate.operator} `)})`;
+    }
+
     const left = this.#compileExpression(predicate.left, context);
 
     if (predicate.operator === 'is null' || predicate.operator === 'is not null') {
@@ -2567,18 +2579,130 @@ export class ObjxSession<TTransaction = unknown> {
     options: ObjxQueryMaterializationOptions,
   ): Promise<readonly Record<string, unknown>[]> {
     const hydratedRows = rows.map((row) => ({ ...row }));
+    const eagerRelationTree = this.#buildEagerRelationTree(queryNode.eagerRelations);
 
-    for (const relationName of queryNode.eagerRelations) {
-      const relation = queryNode.model.relations[relationName];
+    await this.#attachRelationTree(
+      queryNode.model,
+      hydratedRows,
+      eagerRelationTree,
+      options,
+    );
+
+    return hydratedRows;
+  }
+
+  #parseEagerRelationPath(relationPath: string): readonly string[] {
+    const normalizedRelationPath = relationPath.trim();
+
+    if (normalizedRelationPath.length === 0) {
+      throw new ObjxSqlEngineError('Eager relation path cannot be empty.');
+    }
+
+    const segments = normalizedRelationPath.split('.').map((segment) => segment.trim());
+
+    if (segments.some((segment) => segment.length === 0)) {
+      throw new ObjxSqlEngineError(
+        `Invalid eager relation path "${relationPath}".`,
+      );
+    }
+
+    return segments;
+  }
+
+  #buildEagerRelationTree(relationPaths: readonly string[]): EagerRelationTree {
+    const tree: EagerRelationTree = new Map();
+
+    for (const relationPath of relationPaths) {
+      const segments = this.#parseEagerRelationPath(relationPath);
+      let current = tree;
+
+      for (const segment of segments) {
+        const next = current.get(segment);
+
+        if (next) {
+          current = next;
+          continue;
+        }
+
+        const child: EagerRelationTree = new Map();
+        current.set(segment, child);
+        current = child;
+      }
+    }
+
+    return tree;
+  }
+
+  #collectAttachedRelationRows(
+    rows: readonly Record<string, unknown>[],
+    relationName: string,
+  ): Record<string, unknown>[] {
+    const nestedRows: Record<string, unknown>[] = [];
+    const seen = new Set<Record<string, unknown>>();
+
+    for (const row of rows) {
+      const related = row[relationName];
+
+      if (Array.isArray(related)) {
+        for (const item of related) {
+          if (!isRecord(item) || seen.has(item)) {
+            continue;
+          }
+
+          seen.add(item);
+          nestedRows.push(item);
+        }
+
+        continue;
+      }
+
+      if (!isRecord(related) || seen.has(related)) {
+        continue;
+      }
+
+      seen.add(related);
+      nestedRows.push(related);
+    }
+
+    return nestedRows;
+  }
+
+  async #attachRelationTree(
+    model: AnyModelDefinition,
+    rows: Record<string, unknown>[],
+    relationTree: EagerRelationTree,
+    options: ObjxQueryMaterializationOptions,
+  ): Promise<void> {
+    if (rows.length === 0 || relationTree.size === 0) {
+      return;
+    }
+
+    for (const [relationName, childTree] of relationTree.entries()) {
+      const relation = model.relations[relationName];
 
       if (!relation) {
         continue;
       }
 
-      await this.#attachRelation(queryNode.model, relationName, relation, hydratedRows, options);
-    }
+      await this.#attachRelation(model, relationName, relation, rows, options);
 
-    return hydratedRows;
+      if (childTree.size === 0) {
+        continue;
+      }
+
+      const nestedRows = this.#collectAttachedRelationRows(rows, relationName);
+
+      if (nestedRows.length === 0) {
+        continue;
+      }
+
+      await this.#attachRelationTree(
+        relation.target(),
+        nestedRows,
+        childTree,
+        options,
+      );
+    }
   }
 
   async #attachRelation(

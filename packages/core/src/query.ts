@@ -45,12 +45,22 @@ export type PredicateOperator =
   | 'is null'
   | 'is not null';
 
-export interface PredicateNode {
+export interface ComparisonPredicateNode {
   readonly kind: 'predicate';
   readonly operator: PredicateOperator;
   readonly left: ExpressionNode;
   readonly right?: ExpressionNode | readonly ExpressionNode[];
 }
+
+export type LogicalPredicateOperator = 'and' | 'or';
+
+export interface LogicalPredicateNode {
+  readonly kind: 'logical-predicate';
+  readonly operator: LogicalPredicateOperator;
+  readonly predicates: readonly PredicateNode[];
+}
+
+export type PredicateNode = ComparisonPredicateNode | LogicalPredicateNode;
 
 export interface SelectionNode<
   TColumn extends AnyModelColumnReference = AnyModelColumnReference,
@@ -155,6 +165,15 @@ type MergeRelationResult<
   TRelation extends AnyRelationDefinition,
 > = Simplify<TResult & Record<TRelationName, InferRelationShape<TRelation>>>;
 
+export type RelationExpression<TModel extends AnyModelDefinition = AnyModelDefinition> =
+  | Extract<keyof TModel['relations'], string>
+  | readonly RelationExpression<TModel>[]
+  | {
+      readonly [TRelationName in Extract<keyof TModel['relations'], string>]?:
+        | true
+        | RelationExpression<InferRelationTarget<TModel['relations'][TRelationName]>>;
+    };
+
 export type JoinConditionInput =
   | readonly [AnyModelColumnReference, AnyModelColumnReference]
   | readonly (readonly [AnyModelColumnReference, AnyModelColumnReference])[];
@@ -192,7 +211,7 @@ function createPredicate(
   operator: PredicateOperator,
   left: AnyModelColumnReference,
   right?: unknown,
-): PredicateNode {
+): ComparisonPredicateNode {
   const predicate: {
     kind: 'predicate';
     operator: PredicateOperator;
@@ -210,7 +229,22 @@ function createPredicate(
     predicate.right = valueExpression(right);
   }
 
-  return deepFreeze(predicate) as PredicateNode;
+  return deepFreeze(predicate) as ComparisonPredicateNode;
+}
+
+function createLogicalPredicate(
+  operator: LogicalPredicateOperator,
+  predicates: readonly PredicateNode[],
+): LogicalPredicateNode {
+  if (predicates.length === 0) {
+    throw new Error(`Logical predicate "${operator}" requires at least one predicate.`);
+  }
+
+  return deepFreeze({
+    kind: 'logical-predicate',
+    operator,
+    predicates: deepFreeze([...predicates]),
+  }) as LogicalPredicateNode;
 }
 
 export interface FilterOperators {
@@ -252,6 +286,8 @@ export interface FilterOperators {
   ): PredicateNode;
   isNull<TColumn extends AnyModelColumnReference>(left: TColumn): PredicateNode;
   isNotNull<TColumn extends AnyModelColumnReference>(left: TColumn): PredicateNode;
+  and(...predicates: readonly PredicateNode[]): PredicateNode;
+  or(...predicates: readonly PredicateNode[]): PredicateNode;
 }
 
 export const op: FilterOperators = deepFreeze({
@@ -287,6 +323,12 @@ export const op: FilterOperators = deepFreeze({
   },
   isNotNull(left) {
     return createPredicate('is not null', left);
+  },
+  and(...predicates) {
+    return createLogicalPredicate('and', predicates);
+  },
+  or(...predicates) {
+    return createLogicalPredicate('or', predicates);
   },
 }) as FilterOperators;
 
@@ -392,6 +434,230 @@ function resolveRelationJoins(
       relationName,
     ),
   ]);
+}
+
+type RuntimeRelationExpression =
+  | string
+  | readonly unknown[]
+  | Readonly<Record<string, unknown>>;
+
+type RelationPathTree = Map<string, RelationPathTree>;
+
+function isRelationExpressionRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseRelationPathSegments(
+  model: AnyModelDefinition,
+  relationPath: string,
+): readonly string[] {
+  const normalizedRelationPath = relationPath.trim();
+
+  if (normalizedRelationPath.length === 0) {
+    throw new Error(`Cannot resolve an empty relation path for model "${model.name}".`);
+  }
+
+  const segments = normalizedRelationPath.split('.').map((segment) => segment.trim());
+
+  if (segments.some((segment) => segment.length === 0)) {
+    throw new Error(
+      `Invalid relation path "${relationPath}" for model "${model.name}".`,
+    );
+  }
+
+  return segments;
+}
+
+function resolveRelationPath(
+  model: AnyModelDefinition,
+  relationPath: string,
+): string {
+  const segments = parseRelationPathSegments(model, relationPath);
+  let currentModel: AnyModelDefinition = model;
+
+  for (const segment of segments) {
+    const relation = currentModel.relations[segment];
+
+    if (!relation) {
+      throw new Error(`Unknown relation "${segment}" for model "${currentModel.name}".`);
+    }
+
+    currentModel = relation.target();
+  }
+
+  return segments.join('.');
+}
+
+function collectRelationExpressionPaths(
+  model: AnyModelDefinition,
+  expression: RuntimeRelationExpression,
+  prefix: readonly string[] = [],
+): readonly string[] {
+  if (typeof expression === 'string') {
+    const segments = parseRelationPathSegments(model, expression);
+    let currentModel: AnyModelDefinition = model;
+
+    for (const segment of segments) {
+      const relation = currentModel.relations[segment];
+
+      if (!relation) {
+        throw new Error(`Unknown relation "${segment}" for model "${currentModel.name}".`);
+      }
+
+      currentModel = relation.target();
+    }
+
+    return [deepFreeze([...prefix, ...segments]).join('.')];
+  }
+
+  if (Array.isArray(expression)) {
+    if (expression.length === 0) {
+      if (prefix.length === 0) {
+        throw new Error(`Cannot resolve an empty relation expression for model "${model.name}".`);
+      }
+
+      return [prefix.join('.')];
+    }
+
+    return expression.flatMap((item) => {
+      if (
+        typeof item !== 'string' &&
+        !Array.isArray(item) &&
+        !isRelationExpressionRecord(item)
+      ) {
+        throw new Error(`Invalid relation expression for model "${model.name}".`);
+      }
+
+      return collectRelationExpressionPaths(model, item as RuntimeRelationExpression, prefix);
+    });
+  }
+
+  if (!isRelationExpressionRecord(expression)) {
+    throw new Error(`Invalid relation expression for model "${model.name}".`);
+  }
+
+  const entries = Object.entries(expression);
+
+  if (entries.length === 0) {
+    if (prefix.length === 0) {
+      throw new Error(`Cannot resolve an empty relation expression for model "${model.name}".`);
+    }
+
+    return [prefix.join('.')];
+  }
+
+  const paths: string[] = [];
+
+  for (const [relationName, relationExpression] of entries) {
+    const normalizedRelationName = relationName.trim();
+
+    if (normalizedRelationName.length === 0) {
+      throw new Error(`Invalid relation expression for model "${model.name}".`);
+    }
+
+    const relation = model.relations[normalizedRelationName];
+
+    if (!relation) {
+      throw new Error(`Unknown relation "${normalizedRelationName}" for model "${model.name}".`);
+    }
+
+    const nextPrefix = [...prefix, normalizedRelationName];
+
+    if (relationExpression === true || relationExpression === undefined) {
+      paths.push(nextPrefix.join('.'));
+      continue;
+    }
+
+    if (
+      typeof relationExpression !== 'string' &&
+      !Array.isArray(relationExpression) &&
+      !isRelationExpressionRecord(relationExpression)
+    ) {
+      throw new Error(
+        `Invalid expression for relation "${normalizedRelationName}" on model "${model.name}".`,
+      );
+    }
+
+    paths.push(
+      ...collectRelationExpressionPaths(
+        relation.target(),
+        relationExpression as RuntimeRelationExpression,
+        nextPrefix,
+      ),
+    );
+  }
+
+  return paths;
+}
+
+function resolveRelationExpressionPaths(
+  model: AnyModelDefinition,
+  expression: string | RelationExpression<any>,
+): readonly string[] {
+  const paths =
+    typeof expression === 'string'
+      ? [resolveRelationPath(model, expression)]
+      : collectRelationExpressionPaths(model, expression as RuntimeRelationExpression);
+
+  return deepFreeze([...new Set(paths)]);
+}
+
+function buildRelationPathTree(relationPaths: readonly string[]): RelationPathTree {
+  const tree: RelationPathTree = new Map();
+
+  for (const relationPath of relationPaths) {
+    const segments = relationPath.split('.');
+    let current = tree;
+
+    for (const segment of segments) {
+      const next = current.get(segment);
+
+      if (next) {
+        current = next;
+        continue;
+      }
+
+      const child: RelationPathTree = new Map();
+      current.set(segment, child);
+      current = child;
+    }
+  }
+
+  return tree;
+}
+
+function appendRelationJoinsFromTree(
+  model: AnyModelDefinition,
+  relationTree: RelationPathTree,
+  joinType: JoinType,
+  joins: JoinNode[],
+): void {
+  for (const [relationName, childTree] of relationTree) {
+    const relation = model.relations[relationName];
+
+    if (!relation) {
+      continue;
+    }
+
+    joins.push(...resolveRelationJoins(relationName, relation, joinType));
+
+    if (childTree.size > 0) {
+      appendRelationJoinsFromTree(relation.target(), childTree, joinType, joins);
+    }
+  }
+}
+
+function resolveRelationExpressionJoins(
+  model: AnyModelDefinition,
+  expression: string | RelationExpression<any>,
+  joinType: JoinType,
+): readonly JoinNode[] {
+  const relationTree = buildRelationPathTree(resolveRelationExpressionPaths(model, expression));
+  const joins: JoinNode[] = [];
+
+  appendRelationJoinsFromTree(model, relationTree, joinType, joins);
+
+  return deepFreeze(joins);
 }
 
 function cloneSelectNode<TModel extends AnyModelDefinition>(
@@ -603,57 +869,65 @@ export class SelectQueryBuilder<
 
   joinRelated<K extends Extract<keyof TModel['relations'], string>>(
     relationName: K,
+  ): SelectQueryBuilder<TModel, TResult>;
+  joinRelated(
+    relationExpression: string | RelationExpression<TModel>,
   ): SelectQueryBuilder<TModel, TResult> {
-    const relation = this.#model.relations[relationName];
-
-    if (!relation) {
-      throw new Error(`Unknown relation "${relationName}" for model "${this.#model.name}".`);
-    }
+    const joins = resolveRelationExpressionJoins(
+      this.#model,
+      relationExpression,
+      'inner',
+    );
 
     return new SelectQueryBuilder<TModel, TResult>(
       this.#model,
       cloneSelectNode(this.#model, this.#node, {
-        joins: deepFreeze([...this.#node.joins, ...resolveRelationJoins(relationName, relation, 'inner')]),
+        joins: deepFreeze([...this.#node.joins, ...joins]),
       }),
     );
   }
 
   leftJoinRelated<K extends Extract<keyof TModel['relations'], string>>(
     relationName: K,
+  ): SelectQueryBuilder<TModel, TResult>;
+  leftJoinRelated(
+    relationExpression: string | RelationExpression<TModel>,
   ): SelectQueryBuilder<TModel, TResult> {
-    const relation = this.#model.relations[relationName];
-
-    if (!relation) {
-      throw new Error(`Unknown relation "${relationName}" for model "${this.#model.name}".`);
-    }
+    const joins = resolveRelationExpressionJoins(
+      this.#model,
+      relationExpression,
+      'left',
+    );
 
     return new SelectQueryBuilder<TModel, TResult>(
       this.#model,
       cloneSelectNode(this.#model, this.#node, {
-        joins: deepFreeze([...this.#node.joins, ...resolveRelationJoins(relationName, relation, 'left')]),
+        joins: deepFreeze([...this.#node.joins, ...joins]),
       }),
     );
   }
 
   withRelated<K extends Extract<keyof TModel['relations'], string>>(
     relationName: K,
-  ): SelectQueryBuilder<TModel, MergeRelationResult<TResult, K, TModel['relations'][K]>> {
-    const relation = this.#model.relations[relationName];
+  ): SelectQueryBuilder<TModel, MergeRelationResult<TResult, K, TModel['relations'][K]>>;
+  withRelated(
+    relationExpression: string | RelationExpression<TModel>,
+  ): SelectQueryBuilder<TModel, TResult>;
+  withRelated(
+    relationExpression: string | RelationExpression<TModel>,
+  ): SelectQueryBuilder<TModel, any> {
+    const eagerRelations = new Set(this.#node.eagerRelations);
 
-    if (!relation) {
-      throw new Error(`Unknown relation "${relationName}" for model "${this.#model.name}".`);
+    for (const relationPath of resolveRelationExpressionPaths(this.#model, relationExpression)) {
+      eagerRelations.add(relationPath);
     }
-
-    const eagerRelations = this.#node.eagerRelations.includes(relationName)
-      ? this.#node.eagerRelations
-      : deepFreeze([...this.#node.eagerRelations, relationName]);
 
     return new SelectQueryBuilder(
       this.#model,
       cloneSelectNode(this.#model, this.#node, {
-        eagerRelations,
+        eagerRelations: deepFreeze([...eagerRelations]),
       }),
-    ) as SelectQueryBuilder<TModel, MergeRelationResult<TResult, K, TModel['relations'][K]>>;
+    ) as SelectQueryBuilder<TModel, TResult>;
   }
 
   withSoftDeleted(): SelectQueryBuilder<TModel, TResult> {

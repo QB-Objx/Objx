@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@objx/core",
+      "@objx/sql-engine",
+      "@objx/plugins",
+      "@objx/validation",
+      "@objx/codegen",
+      "@objx/sqlite-driver",
+      "@objx/postgres-driver",
+      "@objx/mysql-driver"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

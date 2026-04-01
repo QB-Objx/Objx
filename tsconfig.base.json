@@ -39,6 +39,9 @@
       ],
       "@objx/postgres-driver": [
         "packages/postgres-driver/src/index.ts"
+      ],
+      "@objx/mysql-driver": [
+        "packages/mysql-driver/src/index.ts"
       ]
     }
   }

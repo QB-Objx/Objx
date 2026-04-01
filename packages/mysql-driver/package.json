@@ -1,5 +1,5 @@
 {
-  "name": "@objx/codegen",
+  "name": "@objx/mysql-driver",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -8,17 +8,13 @@
   "publishConfig": {
     "access": "public"
   },
-  "bin": {
-    "objx-codegen": "./dist/cli.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./cli": {
-      "types": "./dist/cli.d.ts",
-      "default": "./dist/cli.js"
     }
+  },
+  "dependencies": {
+    "@objx/sql-engine": "0.1.0"
   }
 }

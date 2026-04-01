@@ -21,6 +21,9 @@
     },
     {
       "path": "./packages/postgres-driver"
+    },
+    {
+      "path": "./packages/mysql-driver"
     }
   ]
 }

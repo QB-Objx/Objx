@@ -9,9 +9,12 @@ Regra:
 
 ## Proximo Passo Imediato
 
-- [x] driver Postgres oficial
-- [ ] nested eager loading
-- [ ] expressions compostas de relacao
+- [x] benchmarks publicos
+- [x] schemas de migrations
+- [x] schemas de seeds
+- [x] runner de migrations
+- [x] runner de seeds
+- [x] driver MySQL oficial
 
 ## Fase 0: Fundacao
 
@@ -88,9 +91,14 @@ Regra:
 
 - [x] driver SQLite oficial
 - [x] driver Postgres oficial
-- [ ] nested eager loading
-- [ ] expressions compostas de relacao
-- [ ] benchmarks publicos
+- [x] driver MySQL oficial
+- [x] nested eager loading
+- [x] expressions compostas de relacao
+- [x] benchmarks publicos
+- [x] schemas de migrations
+- [x] schemas de seeds
+- [x] runner de migrations
+- [x] runner de seeds
 
 ## Infra Do Motor SQL
 
