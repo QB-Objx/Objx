@@ -15,6 +15,7 @@
     }
   },
   "dependencies": {
-    "@objx/core": "0.1.0"
+    "@objx/core": "0.1.0",
+    "@objx/validation": "0.1.0"
   }
 }

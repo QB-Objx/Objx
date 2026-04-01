@@ -35,6 +35,13 @@ import {
   hydrateModelRows,
   op,
 } from '@objx/core';
+import {
+  ObjxValidationError,
+  VALIDATION_METADATA_KEY,
+  type ValidationIssue,
+  type ValidationOperation,
+  type ValidationPluginMetadata,
+} from '@objx/validation';
 
 export interface SqlParameter {
   readonly value: unknown;
@@ -345,6 +352,8 @@ type EagerRelationTree = Map<string, EagerRelationTree>;
 
 const SOFT_DELETE_METADATA_KEY = 'softDelete';
 const TENANT_SCOPE_METADATA_KEY = 'tenantScope';
+
+type ValidationModelConfig = ValidationPluginMetadata<unknown>;
 
 interface SoftDeleteModelConfig {
   readonly column: string;
@@ -973,7 +982,9 @@ export interface ObjxSessionOptions<TTransaction = unknown> {
 
 export interface ObjxExecuteOptions<TTransaction = unknown>
   extends SqlExecutionRequest<TTransaction>,
-    ObjxQueryMaterializationOptions {}
+    ObjxQueryMaterializationOptions {
+  readonly validationOperation?: ValidationOperation;
+}
 
 export interface ObjxTransactionOptions {
   readonly metadata?: Readonly<Record<string, unknown>>;
@@ -1071,6 +1082,14 @@ export class ObjxSession<TTransaction = unknown> {
       | undefined;
   }
 
+  #getValidationConfig(
+    registration: ModelPluginRegistration | undefined,
+  ): ValidationModelConfig | undefined {
+    return registration?.metadata.get(VALIDATION_METADATA_KEY) as
+      | ValidationModelConfig
+      | undefined;
+  }
+
   #createPluginContext(
     registration: ModelPluginRegistration,
     executionContext?: ExecutionContext,
@@ -1120,6 +1139,126 @@ export class ObjxSession<TTransaction = unknown> {
     }
 
     return preparedQuery;
+  }
+
+  #resolveValidationSchema(
+    validation: ValidationModelConfig,
+    operation: ValidationOperation,
+    queryKind: QueryNode['kind'],
+  ): unknown {
+    switch (operation) {
+      case 'insert':
+        return validation.schemas.insert ?? validation.schemas.default;
+      case 'update':
+        return validation.schemas.update ?? validation.schemas.default;
+      case 'insertGraph':
+        return (
+          validation.schemas.insertGraph ??
+          validation.schemas.insert ??
+          validation.schemas.default
+        );
+      case 'upsertGraph':
+        if (queryKind === 'insert') {
+          return (
+            validation.schemas.upsertGraph ??
+            validation.schemas.insertGraph ??
+            validation.schemas.insert ??
+            validation.schemas.default
+          );
+        }
+
+        return (
+          validation.schemas.upsertGraph ??
+          validation.schemas.update ??
+          validation.schemas.default
+        );
+    }
+  }
+
+  async #validatePayload<TValue>(
+    registration: ModelPluginRegistration,
+    operation: ValidationOperation,
+    queryKind: QueryNode['kind'],
+    input: TValue,
+  ): Promise<TValue> {
+    const validation = this.#getValidationConfig(registration);
+
+    if (!validation) {
+      return input;
+    }
+
+    const schema = this.#resolveValidationSchema(validation, operation, queryKind);
+
+    if (schema === undefined) {
+      return input;
+    }
+
+    const result = await validation.adapter.validate<TValue>(schema, input, {
+      operation,
+      modelName: registration.model.name,
+      tableName: registration.model.table,
+    });
+
+    if (result.success) {
+      return result.value;
+    }
+
+    throw new ObjxValidationError(
+      `Validation failed for model "${registration.model.name}" during "${operation}" using ${validation.adapter.name}.`,
+      {
+        modelName: registration.model.name,
+        tableName: registration.model.table,
+        operation,
+        adapterName: validation.adapter.name,
+        issues: result.issues as readonly ValidationIssue[],
+      },
+    );
+  }
+
+  async #applyValidationToStructuredQuery(
+    queryNode: QueryNode,
+    registration: ModelPluginRegistration,
+    operation: ValidationOperation | undefined,
+  ): Promise<QueryNode> {
+    if (!operation) {
+      return queryNode;
+    }
+
+    switch (queryNode.kind) {
+      case 'select':
+      case 'delete':
+        return queryNode;
+      case 'insert': {
+        const validatedRows = await Promise.all(
+          queryNode.rows.map((row) =>
+            this.#validatePayload<Readonly<Record<string, unknown>>>(
+              registration,
+              operation,
+              queryNode.kind,
+              row,
+            ),
+          ),
+        );
+
+        return {
+          ...queryNode,
+          rows: validatedRows,
+        };
+      }
+      case 'update': {
+        const validatedValues = await this.#validatePayload<Readonly<Record<string, unknown>>>(
+          registration,
+          operation,
+          queryNode.kind,
+          queryNode.values,
+        );
+
+        return {
+          ...queryNode,
+          values: validatedValues,
+        };
+      }
+    }
   }
 
   #applySoftDeleteScope(
@@ -1317,10 +1456,25 @@ export class ObjxSession<TTransaction = unknown> {
       : undefined;
     const pluginContext =
       registration && this.#createPluginContext(registration, executionContext, originalQueryNode);
-    const queryNode =
+    const preparedQueryNode =
       originalQueryNode && registration
         ? this.#prepareStructuredQuery(originalQueryNode, registration, executionContext)
         : originalQueryNode;
+    const validationOperation =
+      options.validationOperation ??
+      (originalQueryNode?.kind === 'insert'
+        ? 'insert'
+        : originalQueryNode?.kind === 'update'
+          ? 'update'
+          : undefined);
+    const queryNode =
+      preparedQueryNode && registration
+        ? await this.#applyValidationToStructuredQuery(
+            preparedQueryNode,
+            registration,
+            validationOperation,
+          )
+        : preparedQueryNode;
     const compiledQuery = isCompiledQuery(query)
       ? query
       : isRawSqlFragment(query)
@@ -2096,6 +2250,10 @@ export class ObjxSession<TTransaction = unknown> {
         throw error;
       }
 
+      if (error instanceof ObjxValidationError) {
+        throw error;
+      }
+
       if (error instanceof ObjxSqlEngineError) {
         throw error;
       }
@@ -2307,6 +2465,7 @@ export class ObjxSession<TTransaction = unknown> {
 
     const executeOptions: {
       hydrate?: boolean | HydrationOptions;
+      validationOperation?: ValidationOperation;
     } = {};
 
     if (options.hydrate !== undefined) {
@@ -2360,6 +2519,7 @@ export class ObjxSession<TTransaction = unknown> {
     const primaryColumn = this.#getPrimaryColumn(model);
     const executeOptions: {
       hydrate?: boolean | HydrationOptions;
+      validationOperation?: ValidationOperation;
     } = {};
 
     if (options.hydrate !== undefined) {
@@ -2429,11 +2589,14 @@ export class ObjxSession<TTransaction = unknown> {
     const returningColumns = Object.values(model.columns) as AnyModelColumnReference[];
     const executeOptions: {
       hydrate?: boolean | HydrationOptions;
+      validationOperation?: ValidationOperation;
     } = {};
 
     if (options.hydrate !== undefined) {
       executeOptions.hydrate = options.hydrate;
     }
+
+    executeOptions.validationOperation = 'upsertGraph';
 
     const updatedRows = await this.execute(
       model
@@ -2476,11 +2639,14 @@ export class ObjxSession<TTransaction = unknown> {
     const returningColumns = Object.values(model.columns) as AnyModelColumnReference[];
     const executeOptions: {
       hydrate?: boolean | HydrationOptions;
+      validationOperation?: ValidationOperation;
     } = {};
 
     if (options.hydrate !== undefined) {
       executeOptions.hydrate = options.hydrate;
     }
+
+    executeOptions.validationOperation = 'insertGraph';
 
     const insertedRows = await this.execute(
       model.insert(values).returning(() => returningColumns),

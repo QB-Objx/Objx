@@ -1,311 +1,890 @@
 # OBJX
 
-`OBJX` e um novo ORM SQL-first para TypeScript inspirado no Objection.js, mas redesenhado para o ecossistema moderno.
+`OBJX` e um ORM SQL-first para TypeScript inspirado no Objection.js e redesenhado com um motor SQL embutido, runtime moderno e foco em extensibilidade.
 
-O nome foi escolhido como uma evolucao curta e contemporanea de `Objection`:
-- `OBJ` preserva a origem e a identidade do projeto.
-- `X` comunica nova geracao, extensibilidade e foco em uma arquitetura mais composavel.
+Estado atual do projeto:
 
-## Visao
+- models tipados com `defineModel`
+- query builder tipado e compilador SQL embutido
+- drivers oficiais para SQLite, Postgres e MySQL
+- `insertGraph`, `upsertGraph`, `relate`, `unrelate`
+- eager loading simples, nested e expressoes compostas de relacao
+- plugins oficiais para `timestamps`, `soft delete`, `audit trail` e `tenant scope`
+- codegen, introspection SQLite, templates, migrations e seeds tipados
 
-Construir o melhor ORM SQL-first para TypeScript:
-- sem esconder SQL;
-- com tipagem forte ponta a ponta;
-- com relacoes e graph operations de alto nivel;
-- com escape hatch real;
-- com arquitetura preparada para plugins.
+## Pacotes
 
-## Objetivos
+Pacotes publicados pelo workspace:
 
-1. Ser mais previsivel que ORMs magicos.
-2. Ser mais expressivo que query builders puros.
-3. Ser mais tipado que o Objection atual.
-4. Ser extensivel sem hacks internos.
-5. Ter um core pequeno, moderno e facil de manter.
+- `@objx/core`: models, colunas, relacoes, query builder e contexto de execucao
+- `@objx/sql-engine`: compilador SQL, sessao, raw SQL e runtime de execucao
+- `@objx/sqlite-driver`: sessao/driver oficial para SQLite
+- `@objx/postgres-driver`: sessao/driver oficial para Postgres
+- `@objx/mysql-driver`: sessao/driver oficial para MySQL
+- `@objx/plugins`: plugins oficiais
+- `@objx/codegen`: introspection, templates, codegen, migrations e seeds multi-dialeto
+- `@objx/validation`: adapters oficiais e runtime de validacao
 
-## Referencias Legadas
+## Instalacao
 
-O projeto agora carrega os dois upstreams de referencia dentro de `old/`:
-- `old/objection.js`
-- `old/knex`
+Caminho feliz para SQLite:
 
-Esses dois repositorios servem como fonte de extracao de conceitos, runtime e algoritmos.
-
-O plano nao e manter dois motores separados dentro do produto novo. O plano e:
-- absorver a camada relacional e de grafo que faz o Objection ser valioso;
-- absorver o motor e a maturidade de compilacao/execucao SQL do Knex;
-- redesenhar a API publica e o core para que tudo isso vire um unico sistema coeso.
-
-Em outras palavras: `OBJX` nao sera um fork com cola entre Objection e Knex. Sera um novo projeto que usa os dois upstreams como base tecnica para convergir em um core unico.
-
-O codigo do Knex foi trazido para dentro do projeto justamente para que possamos adapta-lo ao `OBJX`. A direcao oficial agora e:
-- o motor SQL sera embutido ao projeto;
-- o Knex em `old/knex` e a base de estudo e extracao desse motor;
-- o produto final nao deve depender de um `knex` externo como peca central do runtime.
-
-## O Que Vamos Preservar Da Ideia Original
-
-- Mentalidade SQL-first.
-- Relacoes explicitas.
-- Operacoes de grafo como diferencial real.
-- Escape hatch para SQL bruto e integracao com o builder subjacente.
-- Foco em produtividade de times backend experientes.
-
-## O Que Vamos Mudar
-
-- Sair de uma API centrada em `class extends Model` como contrato principal.
-- Sair de uma tipagem baseada em um arquivo monolitico e altamente dinamico.
-- Reduzir a superficie publica diretamente acoplada ao Knex.
-- Trocar DSLs baseadas em string por APIs tipadas no caminho feliz.
-- Projetar extensibilidade e plugins como capacidade de primeira classe.
-
-## Principios De Arquitetura
-
-### 1. TypeScript First
-
-O runtime e a API publica devem nascer do TypeScript, nao receber tipos depois.
-
-### 2. Core Pequeno
-
-O coracao do ORM precisa conhecer:
-- metadados de modelos;
-- AST de consulta;
-- relacoes;
-- execucao;
-- ciclo de vida de plugins.
-
-Tudo o resto deve ser adaptador ou pacote complementar.
-
-### 3. SQL-First De Verdade
-
-SQL nao e fallback vergonhoso. E parte do produto.
-
-### 4. Compatibilidade Estrategica
-
-Nao vamos copiar o Objection. Vamos herdar a filosofia e corrigir os limites estruturais.
-
-### 5. Plugins Desde O Inicio
-
-Plugins nao serao um remendo. O core precisa expor hooks, registro de capacidades e contratos de extensao estaveis.
-
-### 6. Contexto Assincrono Como Abstracao
-
-Precisamos prever desde cedo uma abstracao de contexto assincrono para:
-- propagacao automatica de transacoes;
-- unit of work por fluxo assincorno;
-- tracing e observabilidade;
-- metadata de request, tenant e autenticacao;
-- estado efemero de plugins durante a execucao.
-
-No Node.js, `AsyncLocalStorage` pode ser a implementacao padrao.
-
-Mas o core nao deve depender diretamente de `AsyncLocalStorage` como contrato. A ideia correta e expor algo como:
-- `ExecutionContext`
-- `ContextCarrier`
-- `TransactionScope`
-
-Assim, a engine pode suportar:
-- transacoes ambientadas sem precisar passar `trx` manualmente por toda a stack;
-- plugins que leem contexto de execucao sem acoplamento com frameworks;
-- adaptadores alternativos no futuro, caso o runtime mude.
-
-## Proposta De Arquitetura
-
-### Pacotes Planejados
-
-- `@objx/core`
-  - metadados de modelos
-  - AST de consultas
-  - relacoes
-  - contexto de execucao
-  - lifecycle e plugin runtime
-- `@objx/sql-engine`
-  - motor SQL embutido do projeto
-  - extracao e adaptacao progressiva das capacidades do Knex
-  - compilacao da AST para SQL
-  - dialetos e helpers comuns
-- `@objx/validation`
-  - adapters para Ajv, Zod, Valibot
-- `@objx/codegen`
-  - geracao de tipos e modelos a partir do banco
-- `@objx/plugins`
-  - plugins oficiais reutilizaveis
-- `@objx/sqlite-driver`
-  - driver oficial SQLite para sessao/runtime
-- `@objx/postgres-driver`
-  - driver oficial Postgres para sessao/runtime
-- `@objx/mysql-driver`
-  - driver oficial MySQL para sessao/runtime
-
-### Camadas
-
-1. Definicao de schema/modelo
-2. Query API tipada
-3. AST interna
-4. Planner e pipeline de execucao
-5. Compilador e executor do motor SQL embutido
-6. Resultado tipado e hydration opcional
-
-## API Alvo
-
-Queremos uma API que seja previsivel e inferivel:
-
-```ts
-export const Person = defineModel({
-  table: 'persons',
-  columns: {
-    id: col.int().primary(),
-    firstName: col.text(),
-    lastName: col.text().nullable(),
-  },
-  relations: (m) => ({
-    pets: hasMany(() => Pet, {
-      from: m.id,
-      to: Pet.columns.ownerId,
-    }),
-  }),
-})
-
-const people = await Person.query(db)
-  .select((p) => [p.id, p.firstName])
-  .where((p, op) => op.eq(p.lastName, 'Lawrence'))
-  .with('pets', (q) => q.select((pet) => [pet.id, pet.name]))
+```bash
+npm install @objx/core @objx/sql-engine @objx/sqlite-driver @objx/plugins
 ```
 
-## Diferenciais Que Precisam Existir
+Para usar Postgres:
 
-- Inferencia forte para select, insert, patch, relations e resultados.
-- Relacoes tipadas sem depender de strings.
-- Operacoes de grafo reais.
-- Transactions ergonomicas.
-- Escape hatch para SQL e integracao com ferramentas existentes.
-- Sistema de plugins robusto.
+```bash
+npm install @objx/core @objx/sql-engine @objx/postgres-driver @objx/plugins pg
+```
 
-## Sistema De Plugins
+Para usar MySQL:
 
-Plugins sao parte do roadmap principal, nao backlog distante.
+```bash
+npm install @objx/core @objx/sql-engine @objx/mysql-driver @objx/plugins mysql2
+```
 
-### Objetivo
+Para tooling e codegen:
 
-Permitir que features avancadas sejam entregues sem inflar o core e sem depender de monkey patching.
+```bash
+npm install -D @objx/codegen
+```
 
-### Casos De Uso
+## Quick Start
 
-- soft delete
-- audit trail
-- multi-tenancy
-- timestamps
-- slug generation
-- row-level security helpers
-- observabilidade
-- cache de leitura
-- validacao customizada
-- naming conventions
-- serializers
-- policy enforcement
+Exemplo minimo com SQLite, contexto de execucao, plugins e uma query tipada:
 
-### Contratos Minimos
+```ts
+import {
+  belongsToOne,
+  col,
+  createExecutionContextManager,
+  defineModel,
+  hasMany,
+} from '@objx/core';
+import { createSqliteSession } from '@objx/sqlite-driver';
+import {
+  createAuditTrailPlugin,
+  createSoftDeletePlugin,
+  createTenantScopePlugin,
+} from '@objx/plugins';
 
-Um plugin deve poder:
-- registrar metadados de modelo;
-- adicionar hooks de lifecycle;
-- estender o query pipeline;
-- inspecionar ou transformar a AST;
-- registrar helpers e macros;
-- expor configuracao tipada;
-- declarar compatibilidade de versao.
+const auditEntries: unknown[] = [];
 
-### Hooks Planejados
+const Company = defineModel({
+  name: 'Company',
+  table: 'companies',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+    tenantId: col.text(),
+  },
+  plugins: [createTenantScopePlugin()],
+});
 
-- `onModelDefine`
-- `onQueryCreate`
-- `onQueryBuild`
-- `onQueryCompile`
-- `onQueryExecute`
-- `onResult`
-- `onError`
+const User = defineModel({
+  name: 'User',
+  table: 'users',
+  columns: {
+    id: col.int().primary(),
+    email: col.text(),
+    companyId: col.int().nullable(),
+    tenantId: col.text(),
+    deletedAt: col.timestamp().nullable(),
+  },
+  relations: (user) => ({
+    company: belongsToOne(() => Company, {
+      from: user.columns.companyId,
+      to: Company.columns.id,
+    }),
+  }),
+  plugins: [
+    createTenantScopePlugin(),
+    createSoftDeletePlugin(),
+    createAuditTrailPlugin({
+      actorKey: 'actorId',
+      emit(entry) {
+        auditEntries.push(entry);
+      },
+    }),
+  ],
+});
 
-### Regras
+const Project = defineModel({
+  name: 'Project',
+  table: 'projects',
+  columns: {
+    id: col.int().primary(),
+    companyId: col.int(),
+    ownerId: col.int().nullable(),
+    name: col.text(),
+    status: col.text(),
+    tenantId: col.text(),
+    deletedAt: col.timestamp().nullable(),
+  },
+  relations: (project) => ({
+    company: belongsToOne(() => Company, {
+      from: project.columns.companyId,
+      to: Company.columns.id,
+    }),
+    owner: belongsToOne(() => User, {
+      from: project.columns.ownerId,
+      to: User.columns.id,
+    }),
+    members: hasMany(() => User, {
+      from: project.columns.companyId,
+      to: User.columns.companyId,
+    }),
+  }),
+  plugins: [createTenantScopePlugin(), createSoftDeletePlugin()],
+});
 
-- plugins nao podem depender de campos internos nao documentados;
-- plugins devem operar sobre contratos publicos;
-- plugins oficiais servem como referencia de qualidade;
-- qualquer extensao que exija patch interno indica falha de design do core.
+const executionContextManager = createExecutionContextManager();
+const session = createSqliteSession({
+  databasePath: './app.sqlite',
+  executionContextManager,
+  hydrateByDefault: true,
+  pragmas: ['foreign_keys = on'],
+});
 
-## Roadmap
+const rows = await executionContextManager.run(
+  {
+    values: {
+      tenantId: 'tenant_a',
+      actorId: 'user_admin',
+    },
+  },
+  () =>
+    session.execute(
+      Project.query()
+        .where(({ status }, op) => op.eq(status, 'active'))
+        .withRelated({
+          company: true,
+          owner: true,
+        }),
+    ),
+);
 
-### Fase 0: Fundacao
+console.log(rows);
+```
 
-- definir nome, tese e escopo
-- montar arquitetura base
-- decidir projeto-base a ser usado como bootstrap
-- inicializar monorepo ou workspace
-- configurar TypeScript estrito, lint, testes e build
+## Definindo Models
 
-### Fase 1: Core Minimo
+Colunas disponiveis no core:
 
-- `defineModel`
-- tipos de coluna
-- registry de modelos
-- metadados de relacao
-- contexto de execucao
-- primeira versao do plugin runtime
+- `col.int()`
+- `col.text()`
+- `col.boolean()`
+- `col.json<T>()`
+- `col.uuid()`
+- `col.timestamp()`
+- `col.custom<T, TKind>()`
 
-### Fase 2: Query AST
+Helpers comuns:
 
-- AST interna para `select`, `insert`, `update`, `delete`
-- operadores de filtro
-- joins basicos
-- projections tipadas
-- compilacao SQL inicial
+- `.primary()`
+- `.nullable()`
+- `.default(value)`
+- `.configure({ ... })`
 
-### Fase 3: Runtime De Execucao
+Exemplo:
 
-- executor de query
-- transactions
-- hydration opcional
-- tratamento padronizado de erros
-- tracing interno
+```ts
+import { col, defineModel } from '@objx/core';
 
-### Fase 4: Relacoes
+export const Task = defineModel({
+  name: 'Task',
+  table: 'tasks',
+  columns: {
+    id: col.int().primary(),
+    title: col.text(),
+    done: col.boolean().default(false),
+    metadata: col.json<{ priority: 'low' | 'high' }>().nullable(),
+    createdAt: col.timestamp(),
+  },
+});
+```
+
+## Relacoes
+
+Relacoes suportadas:
 
 - `belongsToOne`
 - `hasOne`
 - `hasMany`
 - `manyToMany`
-- eager loading tipado
 
-### Fase 5: Graph Operations
+Exemplo com `belongsToOne` e `hasMany`:
 
-- insert graph
-- upsert graph
-- relate/unrelate
-- regras de consistencia
+```ts
+import { belongsToOne, col, defineModel, hasMany } from '@objx/core';
 
-### Fase 6: Plugins Oficiais
+export const Author = defineModel({
+  table: 'authors',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+  },
+});
 
-- timestamps
-- soft delete
-- audit trail
+export const Article = defineModel({
+  table: 'articles',
+  columns: {
+    id: col.int().primary(),
+    authorId: col.int(),
+    title: col.text(),
+  },
+  relations: (article) => ({
+    author: belongsToOne(() => Author, {
+      from: article.columns.authorId,
+      to: Author.columns.id,
+    }),
+    comments: hasMany(() => Comment, {
+      from: article.columns.id,
+      to: Comment.columns.articleId,
+    }),
+  }),
+});
+
+export const Comment = defineModel({
+  table: 'comments',
+  columns: {
+    id: col.int().primary(),
+    articleId: col.int(),
+    body: col.text(),
+  },
+  relations: (comment) => ({
+    article: belongsToOne(() => Article, {
+      from: comment.columns.articleId,
+      to: Article.columns.id,
+    }),
+  }),
+});
+```
+
+Exemplo de `manyToMany`:
+
+```ts
+import { col, defineModel, manyToMany } from '@objx/core';
+
+const Tag = defineModel({
+  table: 'tags',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+  },
+});
+
+const ArticleTag = defineModel({
+  table: 'article_tags',
+  columns: {
+    articleId: col.int(),
+    tagId: col.int(),
+    kind: col.text().nullable(),
+  },
+});
+
+const ArticleWithTags = defineModel({
+  table: 'articles',
+  columns: {
+    id: col.int().primary(),
+    title: col.text(),
+  },
+  relations: (article) => ({
+    tags: manyToMany(() => Tag, {
+      from: article.columns.id,
+      to: Tag.columns.id,
+      through: {
+        from: ArticleTag.columns.articleId,
+        to: ArticleTag.columns.tagId,
+        extras: ['kind'],
+      },
+    }),
+  }),
+});
+```
+
+## Configurando A Conexao
+
+OBJX nao cria conexao de rede sozinho. Voce entrega um banco SQLite ou um pool/client compativel para o driver oficial.
+
+### SQLite
+
+Forma mais simples:
+
+```ts
+import { createSqliteSession } from '@objx/sqlite-driver';
+
+const session = createSqliteSession({
+  databasePath: './app.sqlite',
+  pragmas: ['foreign_keys = on'],
+  hydrateByDefault: true,
+});
+```
+
+Com `DatabaseSync` proprio:
+
+```ts
+import { DatabaseSync } from 'node:sqlite';
+import { createSqliteSession } from '@objx/sqlite-driver';
+
+const database = new DatabaseSync('./app.sqlite');
+
+const session = createSqliteSession({
+  database,
+  hydrateByDefault: true,
+});
+```
+
+### Postgres
+
+O driver espera algo compativel com `pg`:
+
+```ts
+import { Pool } from 'pg';
+import { createPostgresSession } from '@objx/postgres-driver';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const session = createPostgresSession({
+  pool,
+  hydrateByDefault: true,
+});
+```
+
+Voce tambem pode passar um `client` em vez de `pool`.
+
+### MySQL
+
+O driver espera algo compativel com `mysql2/promise`:
+
+```ts
+import mysql from 'mysql2/promise';
+import { createMySqlSession } from '@objx/mysql-driver';
+
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_URL,
+});
+
+const session = createMySqlSession({
+  pool,
+  hydrateByDefault: true,
+});
+```
+
+Voce tambem pode passar um `client` em vez de `pool`.
+
+## Contexto De Execucao
+
+O contexto de execucao existe para:
+
 - tenant scope
+- actor id para auditoria
+- tracing
+- transacoes ambientadas
+- metadata de request
 
-### Fase 7: Tooling
+No Node, o `ExecutionContextManager` usa `AsyncLocalStorage` por padrao.
 
-- codegen
-- introspection
-- CLI
-- templates
-- docs e exemplos reais
+```ts
+import { createExecutionContextManager } from '@objx/core';
 
-## Exemplos Atuais
+const executionContextManager = createExecutionContextManager();
 
-- `examples/sqlite-introspection`: fluxo de introspecao e modelo gerado
-- `examples/complex-runtime`: fluxo completo com plugins, graph operations, eager nested e expressoes compostas de relacao
-- `examples/benchmarks`: suite publica e reproduzivel de benchmark para compilacao SQL e runtime
+await executionContextManager.run(
+  {
+    values: {
+      tenantId: 'tenant_a',
+      actorId: 'user_123',
+      requestId: 'req_001',
+    },
+  },
+  async () => {
+    await session.execute(Project.query());
+  },
+);
+```
 
-## Benchmarks Publicos
+Se voce passar `executionContextManager` na criacao da sessao, `session.execute(...)` e `session.transaction(...)` usam esse contexto automaticamente.
 
-Comando padrao:
+## Executando Queries
+
+`session.execute(...)` aceita:
+
+- builders tipados (`model.query()`, `model.insert()`, `model.update()`, `model.delete()`)
+- AST interna
+- SQL bruto via `sql\`\``
+- query compilada via `session.compile(...)`
+
+### Select
+
+```ts
+const projects = await session.execute(
+  Project.query()
+    .select(({ id, name, status }) => [id, name, status])
+    .where(({ status }, op) => op.eq(status, 'active'))
+    .orderBy(({ id }) => id, 'desc')
+    .limit(20)
+    .offset(0),
+);
+```
+
+### Predicados Compostos
+
+```ts
+const rows = await session.execute(
+  Project.query().where(({ id, status, ownerId }, op) =>
+    op.and(
+      op.or(op.eq(id, 1), op.eq(status, 'planned')),
+      op.isNotNull(ownerId),
+    ),
+  ),
+);
+```
+
+### Insert
+
+```ts
+const inserted = await session.execute(
+  Project.insert({
+    companyId: 1,
+    ownerId: 2,
+    name: 'OBJX',
+    status: 'planned',
+    tenantId: 'tenant_a',
+  }).returning(({ id, name, status }) => [id, name, status]),
+  { hydrate: true },
+);
+```
+
+### Update
+
+Sem `returning`, o resultado padrao e quantidade de linhas afetadas:
+
+```ts
+const count = await session.execute(
+  Project.update({ status: 'active' }).where(({ id }, op) => op.eq(id, 1)),
+);
+```
+
+Com `returning`, o resultado vira array tipado:
+
+```ts
+const updated = await session.execute(
+  Project.update({ status: 'active' })
+    .where(({ id }, op) => op.eq(id, 1))
+    .returning(({ id, status }) => [id, status]),
+  { hydrate: true },
+);
+```
+
+### Delete
+
+```ts
+const deletedCount = await session.execute(
+  Project.delete().where(({ id }, op) => op.eq(id, 1)),
+);
+```
+
+Se o model tiver `soft delete`, `delete()` reescreve para `update`. Para remocao fisica:
+
+```ts
+await session.execute(
+  Project.delete().hardDelete().where(({ id }, op) => op.eq(id, 1)),
+);
+```
+
+## Eager Loading E Join Planning
+
+Eager loading tipado:
+
+```ts
+const rows = await session.execute(
+  Project.query().withRelated({
+    company: true,
+    owner: true,
+    tasks: {
+      assignee: true,
+      comments: {
+        author: true,
+      },
+    },
+  }),
+  { hydrate: true },
+);
+```
+
+String expression tambem funciona:
+
+```ts
+await session.execute(
+  Project.query().withRelated('tasks.comments.author'),
+  { hydrate: true },
+);
+```
+
+Join por relacao:
+
+```ts
+const compiled = session.compile(
+  Project.query().joinRelated({
+    owner: true,
+    tasks: {
+      assignee: true,
+    },
+  }),
+);
+
+console.log(compiled.sql);
+console.log(compiled.parameters);
+```
+
+## Graph Operations
+
+### insertGraph
+
+```ts
+const project = await session.insertGraph(
+  Project,
+  {
+    name: 'Core Runtime',
+    status: 'planned',
+    company: {
+      name: 'OBJX Labs',
+      tenantId: 'tenant_a',
+    },
+    owner: {
+      email: 'owner@objx.dev',
+      tenantId: 'tenant_a',
+    },
+    tasks: [
+      {
+        title: 'Ship alpha',
+        status: 'todo',
+        tenantId: 'tenant_a',
+      },
+    ],
+    tenantId: 'tenant_a',
+  },
+  {
+    hydrate: true,
+  },
+);
+```
+
+### upsertGraph
+
+```ts
+const updated = await session.upsertGraph(
+  Project,
+  {
+    id: 1,
+    status: 'in_progress',
+    tasks: [
+      { id: 10, title: 'Typed planner' },
+      { title: 'Private beta' },
+    ],
+  },
+  {
+    hydrate: true,
+  },
+);
+```
+
+### relate / unrelate
+
+```ts
+await session.relate(Project, 1, 'tasks', 99);
+await session.unrelate(Project, 1, 'tasks', 99);
+```
+
+## Transacoes
+
+Toda sessao oficial suporta `session.transaction(...)`.
+
+### Transacao Basica
+
+```ts
+await session.transaction(async (trxSession) => {
+  await trxSession.execute(
+    Project.insert({
+      companyId: 1,
+      name: 'Inside transaction',
+      status: 'planned',
+      tenantId: 'tenant_a',
+    }),
+  );
+
+  await trxSession.execute(
+    Project.update({ status: 'active' }).where(({ id }, op) => op.eq(id, 1)),
+  );
+});
+```
+
+### Transacao Com Metadata
+
+```ts
+await session.transaction(
+  async (trxSession) => {
+    await trxSession.execute(Project.query().limit(1));
+  },
+  {
+    metadata: {
+      operation: 'project-bootstrap',
+    },
+  },
+);
+```
+
+### Nested Transactions
+
+Nested transaction usa savepoint quando o driver suporta:
+
+```ts
+await session.transaction(async (trxSession) => {
+  await trxSession.execute(
+    Project.insert({
+      companyId: 1,
+      name: 'Outer',
+      status: 'planned',
+      tenantId: 'tenant_a',
+    }),
+  );
+
+  try {
+    await trxSession.transaction(async (nestedSession) => {
+      await nestedSession.execute(
+        Project.insert({
+          companyId: 1,
+          name: 'Nested',
+          status: 'planned',
+          tenantId: 'tenant_a',
+        }),
+      );
+
+      throw new Error('rollback nested');
+    });
+  } catch (error) {
+    if (!(error instanceof Error) || error.cause?.message !== 'rollback nested') {
+      throw error;
+    }
+  }
+});
+```
+
+## Plugins Oficiais
+
+Plugins ficam no model:
+
+```ts
+import {
+  createAuditTrailPlugin,
+  createSoftDeletePlugin,
+  createTenantScopePlugin,
+  createTimestampsPlugin,
+} from '@objx/plugins';
+
+const auditEntries: unknown[] = [];
+
+const Article = defineModel({
+  table: 'articles',
+  columns: {
+    id: col.int().primary(),
+    title: col.text(),
+    tenantId: col.text(),
+    createdAt: col.timestamp(),
+    updatedAt: col.timestamp(),
+    deletedAt: col.timestamp().nullable(),
+  },
+  plugins: [
+    createTimestampsPlugin(),
+    createTenantScopePlugin(),
+    createSoftDeletePlugin(),
+    createAuditTrailPlugin({
+      actorKey: 'actorId',
+      emit(entry) {
+        auditEntries.push(entry);
+      },
+    }),
+  ],
+});
+```
+
+### soft delete
+
+API relevante:
+
+- `query().withSoftDeleted()`
+- `query().onlySoftDeleted()`
+- `delete().hardDelete()`
+
+### tenant scope
+
+Por padrao, o plugin usa:
+
+- coluna: `tenantId`
+- chave do contexto: `tenantId`
+- bypass: `objx.tenantScope.bypass`
+
+Bypass explicito:
+
+```ts
+await session.executionContextManager.run(
+  {
+    values: {
+      'objx.tenantScope.bypass': true,
+    },
+  },
+  () => session.execute(Project.query().withSoftDeleted()),
+);
+```
+
+### audit trail
+
+O plugin recebe `actorId` do contexto e emite entradas de auditoria em `insert`, `update` e `delete` por padrao.
+
+## Hydration
+
+Hydration converte valores conforme o schema do model:
+
+- `timestamp` -> `Date`
+- `boolean` -> `boolean`
+- `json<T>` -> `T`
+
+Voce pode habilitar por query:
+
+```ts
+const rows = await session.execute(Project.query(), {
+  hydrate: true,
+});
+```
+
+Ou como default da sessao:
+
+```ts
+const session = createSqliteSession({
+  databasePath: './app.sqlite',
+  hydrateByDefault: true,
+});
+```
+
+## Raw SQL E Escape Hatch
+
+OBJX trata SQL bruto como capacidade de primeira classe.
+
+Helpers:
+
+- `sql`
+- `identifier`
+- `ref`
+- `joinSql`
+
+Exemplo:
+
+```ts
+import { identifier, sql } from '@objx/sql-engine';
+
+const result = await session.execute(
+  sql`select count(*) as ${identifier('totalProjects')} from ${identifier('projects')}`,
+);
+
+console.log(result.rows[0]?.totalProjects);
+```
+
+Referencias:
+
+```ts
+import { ref } from '@objx/sql-engine';
+
+const compiled = session.compile(
+  Project.query().where(({ createdAt }, op) => op.isNotNull(createdAt)),
+);
+
+console.log(compiled.sql);
+console.log(ref('projects.createdAt'));
+```
+
+## Observabilidade
+
+Voce pode anexar observers na sessao:
+
+```ts
+const session = createSqliteSession({
+  databasePath: './app.sqlite',
+  observers: [
+    {
+      onQueryStart(event) {
+        console.log('sql:start', event.compiledQuery.sql);
+      },
+      onQuerySuccess(event) {
+        console.log('sql:ok', event.durationMs);
+      },
+      onQueryError(event) {
+        console.error('sql:error', event.error);
+      },
+    },
+  ],
+});
+```
+
+## Codegen, Introspection, Migrations E Seeds
+
+O pacote `@objx/codegen` cobre:
+
+- introspection real de SQLite
+- geracao de models
+- template de starter SQLite
+- template de migrations e seeds
+- runner de migrations
+- runner de seeds
+
+### Introspection SQLite
+
+```bash
+npm run build
+npm run codegen -- introspect --dialect sqlite3 --database ./app.sqlite --out ./generated/schema.json
+```
+
+### Gerar Models
+
+```bash
+npm run codegen -- generate --input ./generated/schema.json --out ./generated/models
+```
+
+### Gerar Starter SQLite
+
+```bash
+npm run codegen -- template --template sqlite-starter --out ./starter --package-name my-objx-app
+```
+
+### Gerar Schemas De Migration E Seed
+
+```bash
+npm run codegen -- template --template migration-seed-schemas --out ./db
+```
+
+### Rodar Migrations
+
+```bash
+npm run codegen -- migrate --dialect sqlite3 --database ./app.sqlite --dir ./db/migrations --direction up
+```
+
+### Rodar Seeds
+
+```bash
+npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/seeds --direction run
+```
+
+## Exemplos Do Repositorio
+
+- `examples/sqlite-introspection`: fluxo de introspection e model gerado
+- `examples/complex-runtime`: contexto, plugins, graph ops, eager nested, transacoes e raw SQL
+- `examples/benchmarks`: benchmark publico do compilador e runtime
+
+## Benchmark Publico
 
 ```bash
 npm run benchmark
@@ -315,99 +894,20 @@ Referencia:
 
 - `examples/benchmarks/README.md`
 
-## Schemas De Migrations E Seeds
+## Limites Atuais
 
-Gerar estrutura tipada de migrations/seeds:
+Limites importantes do estado atual:
 
-```bash
-npm run codegen -- template --template migration-seed-schemas --out ./db
-```
+- runtime oficial cobre SQLite, Postgres e MySQL, com codegen, introspection, migrations e seeds para os tres dialetos atuais
+- o caminho SQLite usa `node:sqlite`
+- os drivers de Postgres e MySQL dependem de pools/clients compativeis com `pg` e `mysql2`
+- adapters oficiais de validacao hoje cobrem `zod`, `ajv` e `valibot`; o proximo foco e endurecimento e benchmarks
 
-Arquivos gerados:
+## Repositorios Legados Em `old/`
 
-- `db/migrations/000001_init.migration.mjs`
-- `db/seeds/000001_projects.seed.mjs`
-- `db/README.md`
+O workspace carrega os upstreams de referencia em:
 
-Executar migrations:
+- `old/objection.js`
+- `old/knex`
 
-```bash
-npm run codegen -- migrate --dialect sqlite3 --database ./app.sqlite --dir ./db/migrations --direction up
-```
-
-Executar seeds:
-
-```bash
-npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/seeds --direction run
-```
-
-## Ordem Recomendada De Implementacao
-
-1. Inicializar workspace do projeto novo.
-2. Criar `@objx/core`.
-3. Implementar `defineModel` e tipos de coluna.
-4. Implementar metadados e registry.
-5. Criar AST minima de query.
-6. Criar executor minimo com `select` e `insert`.
-7. Introduzir hooks e plugin runtime cedo.
-8. So depois expandir relacoes e grafo.
-
-## Riscos
-
-- tentar copiar API antiga demais e carregar a mesma divida de tipos;
-- acoplar demais a API publica ao Knex;
-- adiar plugins e depois ter que quebrar o core;
-- construir relacoes antes de estabilizar a AST e metadados;
-- adicionar magia cedo demais.
-
-## Lembretes De Arquitetura
-
-- prever um sistema de contexto assincrono desde o inicio;
-- evitar transacoes ambientadas acopladas diretamente ao runtime Node no core;
-- tratar `AsyncLocalStorage` como adaptador padrao, nao como contrato de dominio;
-- projetar o pipeline para suportar `transaction scope`, `unit of work` e contexto de plugins;
-- garantir que o caminho explicito continue existindo, mesmo com contexto ambientado.
-- tratar `old/knex` como material para extracao de um motor proprio, nao como dependencia final do runtime;
-- evitar desenhar a API publica do `OBJX` como um espelho literal da API do Knex.
-
-## Decisoes Iniciais
-
-- linguagem: TypeScript
-- runtime alvo: Node.js moderno
-- arquitetura: pacote core + motor SQL embutido + extensoes
-- caminho feliz: API tipada, nao string-based
-- escape hatch: obrigatorio
-- plugins: previstos desde o core
-- motor SQL: embutido ao `OBJX`, tomando `old/knex` como base de extracao e adaptacao
-
-## Nome De Trabalho
-
-Nome atual de trabalho: `OBJX`
-
-Se quisermos variar mantendo a referencia ao Objection, alternativas plausiveis:
-- `Objx`
-- `Objex`
-- `Objexion`
-- `Objecta`
-
-No momento, `OBJX` e o melhor nome de trabalho porque e curto, memoravel e facil de usar como namespace de pacotes.
-
-## Proximo Passo
-
-Com este plano aprovado, o proximo passo pratico e criar a estrutura inicial do projeto:
-
-1. workspace
-2. pacote `@objx/core`
-3. tipos de coluna
-4. `defineModel`
-5. registry
-6. runtime minimo de plugins
-
-Agora que os upstreams estao em `old/`, o proximo passo recomendado ja nao e mais escolher uma base externa. E iniciar o workspace do `OBJX` com:
-
-1. `packages/core`
-2. `packages/sql-engine`
-3. `packages/plugins`
-4. `packages/validation`
-5. `packages/codegen`
-5. contracts iniciais de metadata, AST e plugin runtime
+Eles existem como base de estudo e extracao para o motor e para os algoritmos relacionais do projeto, nao como dependencia final obrigatoria do runtime.

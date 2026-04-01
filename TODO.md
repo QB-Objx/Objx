@@ -9,12 +9,9 @@ Regra:
 
 ## Proximo Passo Imediato
 
-- [x] benchmarks publicos
-- [x] schemas de migrations
-- [x] schemas de seeds
-- [x] runner de migrations
-- [x] runner de seeds
-- [x] driver MySQL oficial
+- [ ] benchmark com banco real para Postgres/MySQL
+- [ ] fixtures reutilizaveis para suites de integracao multi-dialeto
+- [x] validation adapters oficiais (`zod`, `ajv` e `valibot`)
 
 ## Fase 0: Fundacao
 
@@ -99,6 +96,23 @@ Regra:
 - [x] schemas de seeds
 - [x] runner de migrations
 - [x] runner de seeds
+
+## Fase 9: Paridade Multi-Dialeto
+
+- [x] introspection Postgres no `@objx/codegen`
+- [x] introspection MySQL no `@objx/codegen`
+- [x] runner de migrations para Postgres
+- [x] runner de migrations para MySQL
+- [x] runner de seeds para Postgres
+- [x] runner de seeds para MySQL
+- [x] templates starter para Postgres
+- [x] templates starter para MySQL
+- [x] templates de migration/seed por dialeto
+- [x] CLI multi-dialeto para introspection/migrate/seed
+- [x] smoke tests e testes unitarios de paridade
+- [x] testes de integracao reais com Postgres
+- [x] testes de integracao reais com MySQL
+- [x] introspection em banco real para Postgres/MySQL no CI
 
 ## Infra Do Motor SQL
 

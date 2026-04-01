@@ -7,6 +7,6 @@ export const Projects = defineModel({
     id: col.int().primary(),
     name: col.text(),
     tenantId: col.text(),
-    deletedAt: col.custom<unknown>("TEXT").nullable(),
+    deletedAt: col.custom("TEXT").nullable(),
   },
 });

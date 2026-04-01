@@ -12,9 +12,12 @@
     "changeset": "npx @changesets/cli@2.29.7",
     "codegen": "node packages/codegen/dist/cli.js",
     "lint": "eslint .",
+    "publish:ci": "npm run build && npm run release",
     "release": "npx @changesets/cli@2.29.7 publish",
+    "smoke:packages": "npm run build && node scripts/smoke-install.mjs",
     "typecheck": "tsc -b --pretty",
-    "test": "npm run build && node tests/session.test.mjs",
+    "test:integration": "npm run build && node tests/integration.test.mjs",
+    "test": "npm run build && node tests/session.test.mjs && node tests/codegen.test.mjs && node tests/validation.test.mjs",
     "version-packages": "npx @changesets/cli@2.29.7 version"
   },
   "devDependencies": {

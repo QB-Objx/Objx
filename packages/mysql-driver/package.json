@@ -16,5 +16,8 @@
   },
   "dependencies": {
     "@objx/sql-engine": "0.1.0"
+  },
+  "peerDependencies": {
+    "mysql2": "^3.0.0"
   }
 }

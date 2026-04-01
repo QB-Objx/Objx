@@ -47,11 +47,72 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Smoke test published package installs
+        run: npm run smoke:packages
+
+  integration-databases:
+    name: Integration Databases (Postgres + MySQL, Node 22)
+    needs:
+      - validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: objx_test
+          POSTGRES_USER: objx
+          POSTGRES_PASSWORD: objx
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U objx -d objx_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: objx_test
+          MYSQL_USER: objx
+          MYSQL_PASSWORD: objx
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uobjx -pobjx"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      POSTGRES_DATABASE_URL: postgresql://objx:objx@127.0.0.1:5432/objx_test
+      MYSQL_DATABASE_URL: mysql://objx:objx@127.0.0.1:3306/objx_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install integration database clients
+        run: npm install --no-save pg mysql2
+
+      - name: Run integration tests against real databases
+        run: npm run test:integration
+
   publish-npm:
     name: Publish to npm
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'QB-Objx/Objx'
     needs:
       - validate
+      - integration-databases
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -77,7 +138,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: npm run version-packages
-          publish: npm run build && npm run release
+          publish: npm run publish:ci
           commit: 'chore(release): version packages'
           title: 'chore(release): version packages'
         env:

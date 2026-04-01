@@ -13,6 +13,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "@objx/core": "0.1.0"
   }
 }
 

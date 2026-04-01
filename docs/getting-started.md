@@ -59,7 +59,13 @@ The template contains:
 
 ## 5. Current Constraint
 
-Real database introspection is implemented for SQLite first. Other dialects are still pending.
+Runtime support is already available for SQLite, Postgres, and MySQL.
+
+Current constraints are mostly in the tooling layer:
+
+- real database introspection is implemented for SQLite first
+- migration and seed runners currently target SQLite
+- Postgres and MySQL runtime usage is available through the official driver packages
 
 ## 6. Advanced Runtime Example
 
