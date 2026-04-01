@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,7 @@ const workspacePackages = new Map([
   ['@objx/postgres-driver', path.join(rootDir, 'packages', 'postgres-driver')],
   ['@objx/mysql-driver', path.join(rootDir, 'packages', 'mysql-driver')],
 ]);
+const workspacePackageJsonCache = new Map();
 
 async function runCommand(command, args, options = {}) {
   try {
@@ -58,6 +59,63 @@ async function packWorkspacePackage(packageName, packageDir, packDirectory) {
   }
 
   return path.join(packDirectory, filename);
+}
+
+async function readWorkspacePackageJson(packageName) {
+  const cached = workspacePackageJsonCache.get(packageName);
+
+  if (cached) {
+    return cached;
+  }
+
+  const packageDirectory = workspacePackages.get(packageName);
+
+  if (!packageDirectory) {
+    throw new Error(`Unknown workspace package "${packageName}".`);
+  }
+
+  const packageJsonPath = path.join(packageDirectory, 'package.json');
+  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'));
+  workspacePackageJsonCache.set(packageName, packageJson);
+  return packageJson;
+}
+
+async function resolveWorkspaceInstallDependencies(packageNames, tarballs) {
+  const resolved = [];
+  const seen = new Set();
+
+  async function visit(packageName) {
+    if (seen.has(packageName)) {
+      return;
+    }
+
+    seen.add(packageName);
+
+    const packageJson = await readWorkspacePackageJson(packageName);
+    const dependencies = Object.keys(packageJson.dependencies ?? {});
+
+    for (const dependencyName of dependencies) {
+      if (!workspacePackages.has(dependencyName)) {
+        continue;
+      }
+
+      await visit(dependencyName);
+    }
+
+    const tarball = tarballs.get(packageName);
+
+    if (!tarball) {
+      throw new Error(`Missing tarball for workspace package "${packageName}".`);
+    }
+
+    resolved.push(tarball);
+  }
+
+  for (const packageName of packageNames) {
+    await visit(packageName);
+  }
+
+  return resolved;
 }
 
 async function installDependencies(workingDirectory, dependencies, options = {}) {
@@ -460,30 +518,31 @@ async function main() {
     }
 
     const sqliteConsumer = await createConsumerProject(tempDirectory, 'sqlite-consumer');
-    await installDependencies(sqliteConsumer, [
-      tarballs.get('@objx/core'),
-      tarballs.get('@objx/sql-engine'),
-      tarballs.get('@objx/sqlite-driver'),
-      tarballs.get('@objx/plugins'),
-    ]);
+    await installDependencies(
+      sqliteConsumer,
+      await resolveWorkspaceInstallDependencies(
+        ['@objx/core', '@objx/sql-engine', '@objx/sqlite-driver', '@objx/plugins'],
+        tarballs,
+      ),
+    );
     await runSmokeScript(sqliteConsumer, 'smoke.mjs', createSqliteSmokeScript());
 
     const postgresConsumer = await createConsumerProject(tempDirectory, 'postgres-consumer');
     await installDependencies(postgresConsumer, [
-      tarballs.get('@objx/core'),
-      tarballs.get('@objx/sql-engine'),
-      tarballs.get('@objx/postgres-driver'),
-      tarballs.get('@objx/plugins'),
+      ...(await resolveWorkspaceInstallDependencies(
+        ['@objx/core', '@objx/sql-engine', '@objx/postgres-driver', '@objx/plugins'],
+        tarballs,
+      )),
       'pg',
     ]);
     await runSmokeScript(postgresConsumer, 'smoke.mjs', createPostgresSmokeScript());
 
     const mysqlConsumer = await createConsumerProject(tempDirectory, 'mysql-consumer');
     await installDependencies(mysqlConsumer, [
-      tarballs.get('@objx/core'),
-      tarballs.get('@objx/sql-engine'),
-      tarballs.get('@objx/mysql-driver'),
-      tarballs.get('@objx/plugins'),
+      ...(await resolveWorkspaceInstallDependencies(
+        ['@objx/core', '@objx/sql-engine', '@objx/mysql-driver', '@objx/plugins'],
+        tarballs,
+      )),
       'mysql2',
     ]);
     await runSmokeScript(mysqlConsumer, 'smoke.mjs', createMySqlSmokeScript());
