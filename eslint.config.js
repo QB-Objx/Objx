@@ -7,7 +7,7 @@ export default tseslint.config(
     ignores: [
       '**/dist/**',
       '**/.tsbuildinfo',
-      'old/**',
+      '**/*.d.ts',
     ],
   },
   js.configs.recommended,

@@ -8,18 +8,15 @@ Este arquivo define as regras de implementacao do projeto `OBJX`.
 - O objetivo e unificar camada relacional, graph operations e motor SQL em um unico projeto coeso.
 - O projeto deve continuar SQL-first, TypeScript-first e plugin-first.
 
-## Upstreams Em `old/`
+## Referencias De Arquitetura
 
-- `old/objection.js` e referencia para relacoes, hydration, lifecycle e graph operations.
-- `old/knex` e referencia para o motor SQL, dialetos, compilacao e execucao.
-- O codigo em `old/` e material de estudo, extracao e adaptacao.
-- Pacotes novos do `OBJX` nao devem depender de `old/` em runtime.
+- O projeto nasceu a partir de estudo de Objection.js e Knex, mas o runtime atual e autonomo.
+- Pacotes novos do `OBJX` nao devem depender de codigo legado ou espelhar APIs antigas por inercia.
 
 ## Regra Central Sobre O Motor
 
 - O motor SQL deve ser embutido ao projeto.
 - O Knex nao deve ser tratado como dependencia central permanente do runtime final.
-- O codigo de `old/knex` existe para ser adaptado, internalizado e reorganizado em um motor proprio do `OBJX`.
 - Nao espelhar cegamente a API publica do Knex.
 
 ## Arquitetura Alvo

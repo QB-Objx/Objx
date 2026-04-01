@@ -1,0 +1,17 @@
+{
+  "name": "objx-express-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/app.mjs",
+    "start": "node src/app.mjs"
+  },
+  "dependencies": {
+    "@qbobjx/core": "^0.1.0",
+    "@qbobjx/plugins": "^0.1.0",
+    "@qbobjx/sqlite-driver": "^0.1.0",
+    "@qbobjx/validation": "^0.1.0",
+    "express": "^5.0.0",
+    "zod": "^3.0.0"
+  }
+}

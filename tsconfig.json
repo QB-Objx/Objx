@@ -24,6 +24,9 @@
     },
     {
       "path": "./packages/mysql-driver"
+    },
+    {
+      "path": "./packages/nestjs"
     }
   ]
 }

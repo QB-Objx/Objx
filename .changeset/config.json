@@ -11,7 +11,8 @@
       "@qbobjx/codegen",
       "@qbobjx/sqlite-driver",
       "@qbobjx/postgres-driver",
-      "@qbobjx/mysql-driver"
+      "@qbobjx/mysql-driver",
+      "@qbobjx/nestjs"
     ]
   ],
   "linked": [],

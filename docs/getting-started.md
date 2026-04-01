@@ -59,13 +59,12 @@ The template contains:
 
 ## 5. Current Constraint
 
-Runtime support is already available for SQLite, Postgres, and MySQL.
+Runtime support is already available for SQLite, Postgres, and MySQL, including codegen, migrations, seeds, and official drivers.
 
-Current constraints are mostly in the tooling layer:
+The current remaining work is mostly around:
 
-- real database introspection is implemented for SQLite first
-- migration and seed runners currently target SQLite
-- Postgres and MySQL runtime usage is available through the official driver packages
+- harder real-database benchmarks
+- more reusable multi-dialect integration fixtures
 
 ## 6. Advanced Runtime Example
 
@@ -78,6 +77,14 @@ node examples/complex-runtime/src/app.mjs
 Reference:
 
 - `examples/complex-runtime/README.md`
+- `examples/express-api/README.md`
+- `examples/nestjs-api/README.md`
+
+The NestJS example uses the recommended operational flow:
+
+- `db/migrations/*.migration.mjs`
+- `db/seeds/*.seed.mjs`
+- explicit `db:migrate` and `db:seed` scripts before app startup
 
 ## 7. Public Benchmarks
 

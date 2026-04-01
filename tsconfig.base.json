@@ -42,6 +42,9 @@
       ],
       "@qbobjx/mysql-driver": [
         "packages/mysql-driver/src/index.ts"
+      ],
+      "@qbobjx/nestjs": [
+        "packages/nestjs/src/index.ts"
       ]
     }
   }

@@ -17,8 +17,6 @@ Regra:
 
 - [x] definir nome, tese e escopo
 - [x] montar arquitetura base
-- [x] importar upstreams em `old/objection.js`
-- [x] importar upstreams em `old/knex`
 - [x] inicializar monorepo/workspace
 - [x] configurar TypeScript estrito
 - [x] configurar lint
@@ -121,7 +119,7 @@ Regra:
 - [x] compilador SQL Postgres
 - [x] sessao de execucao
 - [x] interface de driver
-- [x] extrair primitives uteis de `old/knex`
+- [x] extrair primitives uteis do estudo do Knex
 - [x] dialetos adicionais
 - [x] normalizacao de resultados por driver
 - [x] builder de SQL bruto/escape hatch de primeira classe

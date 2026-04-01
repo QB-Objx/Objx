@@ -1,0 +1,33 @@
+{
+  "name": "objx-nestjs-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:migrate": "objx-codegen migrate --dialect sqlite3 --database ./data/app.sqlite --dir ./db/migrations --direction up",
+    "db:migrate:down": "objx-codegen migrate --dialect sqlite3 --database ./data/app.sqlite --dir ./db/migrations --direction down",
+    "db:seed": "objx-codegen seed --dialect sqlite3 --database ./data/app.sqlite --dir ./db/seeds --direction run",
+    "db:seed:revert": "objx-codegen seed --dialect sqlite3 --database ./data/app.sqlite --dir ./db/seeds --direction revert",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@qbobjx/codegen": "^0.1.0",
+    "@qbobjx/core": "^0.1.0",
+    "@qbobjx/nestjs": "^0.1.0",
+    "@qbobjx/plugins": "^0.1.0",
+    "@qbobjx/sqlite-driver": "^0.1.0",
+    "@qbobjx/validation": "^0.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}

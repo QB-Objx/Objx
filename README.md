@@ -21,6 +21,7 @@ Pacotes publicados pelo workspace:
 - `@qbobjx/sqlite-driver`: sessao/driver oficial para SQLite
 - `@qbobjx/postgres-driver`: sessao/driver oficial para Postgres
 - `@qbobjx/mysql-driver`: sessao/driver oficial para MySQL
+- `@qbobjx/nestjs`: integracao oficial com NestJS, modulo dinamico, contexto por request e filtro de validacao
 - `@qbobjx/plugins`: plugins oficiais
 - `@qbobjx/codegen`: introspection, templates, codegen, migrations e seeds multi-dialeto
 - `@qbobjx/validation`: adapters oficiais e runtime de validacao
@@ -49,6 +50,12 @@ Para tooling e codegen:
 
 ```bash
 npm install -D @qbobjx/codegen
+```
+
+Para integrar com NestJS:
+
+```bash
+npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express rxjs reflect-metadata
 ```
 
 ## Quick Start
@@ -882,6 +889,8 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 
 - `examples/sqlite-introspection`: fluxo de introspection e model gerado
 - `examples/complex-runtime`: contexto, plugins, graph ops, eager nested, transacoes e raw SQL
+- `examples/express-api`: API REST com Express, SQLite, plugins globais na sessao, validacao e CRUD
+- `examples/nestjs-api`: API NestJS com `@qbobjx/nestjs`, migrations, seeds e sessao pronta
 - `examples/benchmarks`: benchmark publico do compilador e runtime
 
 ## Benchmark Publico
@@ -902,12 +911,3 @@ Limites importantes do estado atual:
 - o caminho SQLite usa `node:sqlite`
 - os drivers de Postgres e MySQL dependem de pools/clients compativeis com `pg` e `mysql2`
 - adapters oficiais de validacao hoje cobrem `zod`, `ajv` e `valibot`; o proximo foco e endurecimento e benchmarks
-
-## Repositorios Legados Em `old/`
-
-O workspace carrega os upstreams de referencia em:
-
-- `old/objection.js`
-- `old/knex`
-
-Eles existem como base de estudo e extracao para o motor e para os algoritmos relacionais do projeto, nao como dependencia final obrigatoria do runtime.
