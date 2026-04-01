@@ -7,10 +7,10 @@
     "start": "node src/app.mjs"
   },
   "dependencies": {
-    "@qbobjx/core": "^0.1.1",
-    "@qbobjx/plugins": "^0.1.1",
-    "@qbobjx/sqlite-driver": "^0.1.1",
-    "@qbobjx/validation": "^0.1.1",
+    "@qbobjx/core": "^0.1.0",
+    "@qbobjx/plugins": "^0.1.0",
+    "@qbobjx/sqlite-driver": "^0.1.0",
+    "@qbobjx/validation": "^0.1.0",
     "express": "^5.0.0",
     "zod": "^3.0.0"
   }

@@ -1,6 +1,6 @@
 {
   "name": "@qbobjx/validation",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "private": false,
   "type": "module",
   "files": [
@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@qbobjx/core": "0.1.1"
+    "@qbobjx/core": "0.1.0"
   }
 }
 

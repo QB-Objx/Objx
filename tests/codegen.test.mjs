@@ -689,9 +689,9 @@ const tests = [
       );
       const postgresReadme = postgresSchemaFiles.find((file) => file.path.endsWith('README.md')).contents;
 
-      assert.equal(postgresPackage.dependencies['@qbobjx/postgres-driver'], '0.1.1');
+      assert.equal(postgresPackage.dependencies['@qbobjx/postgres-driver'], '0.1.0');
       assert.equal(postgresPackage.dependencies.pg, '^8.0.0');
-      assert.equal(mysqlPackage.dependencies['@qbobjx/mysql-driver'], '0.1.1');
+      assert.equal(mysqlPackage.dependencies['@qbobjx/mysql-driver'], '0.1.0');
       assert.equal(mysqlPackage.dependencies.mysql2, '^3.0.0');
       assert.match(postgresReadme, /--dialect postgres/);
       assert.match(postgresReadme, /postgresql:\/\/postgres/);

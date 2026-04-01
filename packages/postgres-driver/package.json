@@ -1,6 +1,6 @@
 {
   "name": "@qbobjx/postgres-driver",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "private": false,
   "type": "module",
   "files": [
@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@qbobjx/sql-engine": "0.1.1"
+    "@qbobjx/sql-engine": "0.1.0"
   },
   "peerDependencies": {
     "pg": "^8.0.0"
