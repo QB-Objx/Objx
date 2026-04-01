@@ -36,6 +36,9 @@
       ],
       "@objx/sqlite-driver": [
         "packages/sqlite-driver/src/index.ts"
+      ],
+      "@objx/postgres-driver": [
+        "packages/postgres-driver/src/index.ts"
       ]
     }
   }

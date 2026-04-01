@@ -9,7 +9,7 @@ Regra:
 
 ## Proximo Passo Imediato
 
-- [ ] driver Postgres oficial
+- [x] driver Postgres oficial
 - [ ] nested eager loading
 - [ ] expressions compostas de relacao
 
@@ -87,7 +87,7 @@ Regra:
 ## Fase 8: Proxima Onda
 
 - [x] driver SQLite oficial
-- [ ] driver Postgres oficial
+- [x] driver Postgres oficial
 - [ ] nested eager loading
 - [ ] expressions compostas de relacao
 - [ ] benchmarks publicos

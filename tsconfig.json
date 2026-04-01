@@ -18,6 +18,9 @@
     },
     {
       "path": "./packages/sqlite-driver"
+    },
+    {
+      "path": "./packages/postgres-driver"
     }
   ]
 }

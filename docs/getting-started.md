@@ -48,6 +48,7 @@ The template contains:
 - SQL-first typed query builder
 - embedded SQL compiler/engine
 - official SQLite driver package
+- official Postgres driver package
 - `insertGraph`, `upsertGraph`, `relate`, `unrelate`
 - eager loading
 - `soft delete`

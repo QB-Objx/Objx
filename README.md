@@ -130,6 +130,10 @@ Assim, a engine pode suportar:
   - geracao de tipos e modelos a partir do banco
 - `@objx/plugins`
   - plugins oficiais reutilizaveis
+- `@objx/sqlite-driver`
+  - driver oficial SQLite para sessao/runtime
+- `@objx/postgres-driver`
+  - driver oficial Postgres para sessao/runtime
 
 ### Camadas
 

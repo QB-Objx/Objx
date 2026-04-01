@@ -30,6 +30,10 @@ import {
   createSqliteDriver,
   createSqliteSession,
 } from '../packages/sqlite-driver/dist/index.js';
+import {
+  createPostgresDriver,
+  createPostgresSession,
+} from '../packages/postgres-driver/dist/index.js';
 
 class FakeDriver {
   constructor() {
@@ -395,6 +399,236 @@ class FakeDriver {
     }
 
     return (row) => evaluators.every((evaluate) => evaluate(row));
+  }
+}
+
+class FakePostgresPoolClient {
+  constructor(pool) {
+    this.pool = pool;
+    this.released = false;
+  }
+
+  async query(sqlText, parameters = []) {
+    return this.pool.query(sqlText, parameters);
+  }
+
+  release() {
+    if (this.released) {
+      return;
+    }
+
+    this.released = true;
+    this.pool.releaseCount += 1;
+  }
+}
+
+class FakePostgresPool {
+  constructor() {
+    this.rows = [];
+    this.nextId = 0;
+    this.transactionScopes = [];
+    this.connectCount = 0;
+    this.releaseCount = 0;
+    this.ended = false;
+  }
+
+  async query(sqlText, parameters = []) {
+    return this.#execute(sqlText, parameters);
+  }
+
+  async connect() {
+    this.connectCount += 1;
+    return new FakePostgresPoolClient(this);
+  }
+
+  async end() {
+    this.ended = true;
+  }
+
+  #cloneRows() {
+    return this.rows.map((row) => ({ ...row }));
+  }
+
+  #findScopeIndex(name) {
+    for (let index = this.transactionScopes.length - 1; index >= 0; index -= 1) {
+      if (this.transactionScopes[index].name === name) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  #parseSavepointName(sqlText, command) {
+    const quoted = new RegExp(`^${command}\\s+"([^"]+)"$`, 'i').exec(sqlText);
+
+    if (quoted) {
+      return quoted[1];
+    }
+
+    const bare = new RegExp(`^${command}\\s+([^\\s]+)$`, 'i').exec(sqlText);
+    return bare?.[1];
+  }
+
+  async #execute(sqlText, parameters) {
+    const compactSql = sqlText.trim().replace(/\s+/g, ' ');
+    const normalizedSql = compactSql.toLowerCase();
+
+    if (normalizedSql === 'begin') {
+      this.transactionScopes.push({
+        snapshot: this.#cloneRows(),
+      });
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'BEGIN',
+      };
+    }
+
+    if (normalizedSql === 'commit') {
+      this.transactionScopes = [];
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'COMMIT',
+      };
+    }
+
+    if (normalizedSql === 'rollback') {
+      const rootScope = this.transactionScopes[0];
+
+      if (rootScope) {
+        this.rows = rootScope.snapshot.map((row) => ({ ...row }));
+      }
+
+      this.transactionScopes = [];
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'ROLLBACK',
+      };
+    }
+
+    if (normalizedSql.startsWith('savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse savepoint statement: ${sqlText}`);
+      }
+
+      this.transactionScopes.push({
+        name: savepointName,
+        snapshot: this.#cloneRows(),
+      });
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'SAVEPOINT',
+      };
+    }
+
+    if (normalizedSql.startsWith('rollback to savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'rollback to savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse rollback savepoint statement: ${sqlText}`);
+      }
+
+      const savepointIndex = this.#findScopeIndex(savepointName);
+
+      if (savepointIndex >= 0) {
+        const scope = this.transactionScopes[savepointIndex];
+        this.rows = scope.snapshot.map((row) => ({ ...row }));
+        this.transactionScopes = this.transactionScopes.slice(0, savepointIndex + 1);
+      }
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'ROLLBACK',
+      };
+    }
+
+    if (normalizedSql.startsWith('release savepoint ')) {
+      const savepointName = this.#parseSavepointName(compactSql, 'release savepoint');
+
+      if (!savepointName) {
+        throw new Error(`Unable to parse release savepoint statement: ${sqlText}`);
+      }
+
+      const savepointIndex = this.#findScopeIndex(savepointName);
+
+      if (savepointIndex >= 0) {
+        this.transactionScopes.splice(savepointIndex, 1);
+      }
+
+      return {
+        rows: [],
+        rowCount: null,
+        command: 'RELEASE',
+      };
+    }
+
+    if (/^insert into "task_items"/i.test(compactSql)) {
+      const columnsMatch = /insert into "task_items"\s+\(([^)]+)\)/i.exec(compactSql);
+
+      if (!columnsMatch) {
+        throw new Error(`Unable to parse insert columns from SQL: ${sqlText}`);
+      }
+
+      const row = {};
+      const columns = columnsMatch[1]
+        .split(',')
+        .map((column) => column.trim().replace(/"/g, ''));
+
+      columns.forEach((column, index) => {
+        row[column] = parameters[index];
+      });
+
+      if (row.id === undefined) {
+        this.nextId += 1;
+        row.id = this.nextId;
+      } else {
+        this.nextId = Math.max(this.nextId, Number(row.id));
+      }
+
+      this.rows.push({ ...row });
+      const returning = /\breturning\b/i.test(compactSql);
+
+      return {
+        rows: returning ? [{ ...row }] : [],
+        rowCount: 1,
+        command: 'INSERT',
+      };
+    }
+
+    if (/^select\b/i.test(compactSql) && /from "task_items"/i.test(compactSql)) {
+      let rows = this.#cloneRows();
+
+      if (/where "task_items"\."id" = \$1/i.test(compactSql)) {
+        rows = rows.filter((row) => String(row.id) === String(parameters[0]));
+      }
+
+      if (/order by "task_items"\."id"/i.test(compactSql)) {
+        rows.sort((left, right) => Number(left.id) - Number(right.id));
+      }
+
+      return {
+        rows,
+        rowCount: rows.length,
+        command: 'SELECT',
+      };
+    }
+
+    return {
+      rows: [],
+      rowCount: 0,
+      command: 'UNKNOWN',
+    };
   }
 }
 
@@ -838,6 +1072,98 @@ const tests = [
         database.close();
         await rm(tempDir, { recursive: true, force: true });
       }
+    },
+  ],
+  [
+    'postgres driver executes queries and nested transactions via a pool-compatible adapter',
+    async () => {
+      const pool = new FakePostgresPool();
+      const driver = createPostgresDriver({
+        pool,
+        closePoolOnDispose: true,
+      });
+      const session = createPostgresSession({
+        driver,
+      });
+
+      try {
+        const inserted = await session.execute(
+          SqliteTask.insert({
+            title: 'Ship OBJX',
+            done: false,
+            createdAt: '2026-03-31T10:00:00.000Z',
+          }).returning(({ id, title, done, createdAt }) => [id, title, done, createdAt]),
+          {
+            hydrate: true,
+          },
+        );
+
+        assert.equal(inserted.length, 1);
+        assert.equal(inserted[0].id, 1);
+        assert.equal(inserted[0].done, false);
+        assert.ok(inserted[0].createdAt instanceof Date);
+
+        await assert.rejects(
+          () =>
+            session.transaction(async (transactionSession) => {
+              await transactionSession.execute(
+                SqliteTask.insert({
+                  title: 'Rollback me',
+                  done: true,
+                }),
+              );
+
+              throw new Error('rollback');
+            }),
+          (error) => error?.cause?.message === 'rollback',
+        );
+
+        await session.transaction(async (transactionSession) => {
+          await transactionSession.execute(
+            SqliteTask.insert({
+              title: 'Outer',
+              done: true,
+            }),
+          );
+
+          await assert.rejects(
+            () =>
+              transactionSession.transaction(async (nestedSession) => {
+                await nestedSession.execute(
+                  SqliteTask.insert({
+                    title: 'Inner rollback',
+                    done: true,
+                  }),
+                );
+
+                throw new Error('nested rollback');
+              }),
+            (error) => error?.cause?.message === 'nested rollback',
+          );
+
+          await transactionSession.execute(
+            SqliteTask.insert({
+              title: 'Outer after nested',
+              done: false,
+            }),
+          );
+        });
+
+        const rows = await session.execute(SqliteTask.query().orderBy(({ id }) => id), {
+          hydrate: true,
+        });
+
+        assert.deepEqual(
+          rows.map((row) => row.title),
+          ['Ship OBJX', 'Outer', 'Outer after nested'],
+        );
+        assert.equal(pool.connectCount, 2);
+        assert.equal(pool.releaseCount, 2);
+      } finally {
+        await driver.close();
+      }
+
+      assert.equal(pool.ended, true);
     },
   ],
   [
