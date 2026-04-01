@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import { col, defineModel } from '@objx/core';
+import { col, defineModel } from '@qbobjx/core';
 import {
   ObjxValidationError,
   createAjvAdapter,
   createValidationPlugin,
   createValibotAdapter,
   createZodAdapter,
-} from '@objx/validation';
+} from '@qbobjx/validation';
 import {
   createSqliteDriver,
   createSqliteSession,

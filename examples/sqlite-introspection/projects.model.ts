@@ -1,4 +1,4 @@
-import { col, defineModel } from '@objx/core';
+import { col, defineModel } from '@qbobjx/core';
 
 export const Projects = defineModel({
   name: 'Projects',

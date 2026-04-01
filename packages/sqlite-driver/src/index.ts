@@ -7,7 +7,7 @@ import {
   type ObjxSessionOptions,
   type SqlExecutionRequest,
   type SqlDriver,
-} from '@objx/sql-engine';
+} from '@qbobjx/sql-engine';
 
 export interface ObjxSqliteTransaction {
   readonly kind: 'objx:sqlite-transaction';

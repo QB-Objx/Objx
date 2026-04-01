@@ -1627,7 +1627,7 @@ function renderModelFile(table: IntrospectedTable): string {
     .map((column) => `    ${column.name}: ${renderColumnBuilder(column)},`)
     .join('\n');
 
-  return `import { col, defineModel } from '@objx/core';
+  return `import { col, defineModel } from '@qbobjx/core';
 
 export const ${modelName} = defineModel({
   name: '${modelName}',
@@ -1985,10 +1985,10 @@ export function createSqliteStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@objx/core': '0.1.0',
-                '@objx/sql-engine': '0.1.0',
-                '@objx/plugins': '0.1.0',
-                '@objx/sqlite-driver': '0.1.0',
+                '@qbobjx/core': '0.1.0',
+                '@qbobjx/sql-engine': '0.1.0',
+                '@qbobjx/plugins': '0.1.0',
+                '@qbobjx/sqlite-driver': '0.1.0',
               },
             },
             null,
@@ -2005,7 +2005,7 @@ Starter SQLite service for OBJX.
 
 - \`schema.sql\`: bootstrap schema
 - \`src/models.mjs\`: OBJX model definitions
-- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@objx/sqlite-driver\`
+- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@qbobjx/sqlite-driver\`
 
 ## Run
 
@@ -2026,8 +2026,8 @@ Starter SQLite service for OBJX.
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
-          contents: `import { col, defineModel } from '@objx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@objx/plugins';
+          contents: `import { col, defineModel } from '@qbobjx/core';
+import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2047,8 +2047,8 @@ export const Project = defineModel({
         },
         {
           path: path.posix.join(outDir, 'src/app.mjs'),
-          contents: `import { createExecutionContextManager } from '@objx/core';
-import { createSqliteSession } from '@objx/sqlite-driver';
+          contents: `import { createExecutionContextManager } from '@qbobjx/core';
+import { createSqliteSession } from '@qbobjx/sqlite-driver';
 import { Project } from './models.mjs';
 
 const executionContextManager = createExecutionContextManager();
@@ -2105,10 +2105,10 @@ export function createPostgresStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@objx/core': '0.1.0',
-                '@objx/sql-engine': '0.1.0',
-                '@objx/plugins': '0.1.0',
-                '@objx/postgres-driver': '0.1.0',
+                '@qbobjx/core': '0.1.0',
+                '@qbobjx/sql-engine': '0.1.0',
+                '@qbobjx/plugins': '0.1.0',
+                '@qbobjx/postgres-driver': '0.1.0',
                 pg: '^8.0.0',
               },
             },
@@ -2126,7 +2126,7 @@ Starter PostgreSQL service for OBJX.
 
 - \`schema.sql\`: bootstrap schema
 - \`src/models.mjs\`: OBJX model definitions
-- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@objx/postgres-driver\`
+- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@qbobjx/postgres-driver\`
 
 ## Run
 
@@ -2148,8 +2148,8 @@ Starter PostgreSQL service for OBJX.
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
-          contents: `import { col, defineModel } from '@objx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@objx/plugins';
+          contents: `import { col, defineModel } from '@qbobjx/core';
+import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2170,8 +2170,8 @@ export const Project = defineModel({
         {
           path: path.posix.join(outDir, 'src/app.mjs'),
           contents: `import { Pool } from 'pg';
-import { createExecutionContextManager } from '@objx/core';
-import { createPostgresSession } from '@objx/postgres-driver';
+import { createExecutionContextManager } from '@qbobjx/core';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
 import { Project } from './models.mjs';
 
 const executionContextManager = createExecutionContextManager();
@@ -2237,10 +2237,10 @@ export function createMySqlStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@objx/core': '0.1.0',
-                '@objx/sql-engine': '0.1.0',
-                '@objx/plugins': '0.1.0',
-                '@objx/mysql-driver': '0.1.0',
+                '@qbobjx/core': '0.1.0',
+                '@qbobjx/sql-engine': '0.1.0',
+                '@qbobjx/plugins': '0.1.0',
+                '@qbobjx/mysql-driver': '0.1.0',
                 mysql2: '^3.0.0',
               },
             },
@@ -2258,7 +2258,7 @@ Starter MySQL service for OBJX.
 
 - \`schema.sql\`: bootstrap schema
 - \`src/models.mjs\`: OBJX model definitions
-- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@objx/mysql-driver\`
+- \`src/app.mjs\`: sample read/write flow with tenant scope and soft delete using \`@qbobjx/mysql-driver\`
 
 ## Run
 
@@ -2280,8 +2280,8 @@ Starter MySQL service for OBJX.
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
-          contents: `import { col, defineModel } from '@objx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@objx/plugins';
+          contents: `import { col, defineModel } from '@qbobjx/core';
+import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2302,8 +2302,8 @@ export const Project = defineModel({
         {
           path: path.posix.join(outDir, 'src/app.mjs'),
           contents: `import mysql from 'mysql2/promise';
-import { createExecutionContextManager } from '@objx/core';
-import { createMySqlSession } from '@objx/mysql-driver';
+import { createExecutionContextManager } from '@qbobjx/core';
+import { createMySqlSession } from '@qbobjx/mysql-driver';
 import { Project } from './models.mjs';
 
 const executionContextManager = createExecutionContextManager();
@@ -2418,7 +2418,7 @@ This folder contains typed OBJX migration and seed schemas.
         },
         {
           path: path.posix.join(outDir, 'migrations', '000001_init.migration.mjs'),
-          contents: `import { defineMigration } from '@objx/codegen';
+          contents: `import { defineMigration } from '@qbobjx/codegen';
 
 export default defineMigration({
   name: '000001_init',
@@ -2434,7 +2434,7 @@ export default defineMigration({
         },
         {
           path: path.posix.join(outDir, 'seeds', '000001_projects.seed.mjs'),
-          contents: `import { defineSeed } from '@objx/codegen';
+          contents: `import { defineSeed } from '@qbobjx/codegen';
 
 export default defineSeed({
   name: '000001_projects',

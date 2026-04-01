@@ -19,28 +19,28 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@objx/core": [
+      "@qbobjx/core": [
         "packages/core/src/index.ts"
       ],
-      "@objx/sql-engine": [
+      "@qbobjx/sql-engine": [
         "packages/sql-engine/src/index.ts"
       ],
-      "@objx/plugins": [
+      "@qbobjx/plugins": [
         "packages/plugins/src/index.ts"
       ],
-      "@objx/validation": [
+      "@qbobjx/validation": [
         "packages/validation/src/index.ts"
       ],
-      "@objx/codegen": [
+      "@qbobjx/codegen": [
         "packages/codegen/src/index.ts"
       ],
-      "@objx/sqlite-driver": [
+      "@qbobjx/sqlite-driver": [
         "packages/sqlite-driver/src/index.ts"
       ],
-      "@objx/postgres-driver": [
+      "@qbobjx/postgres-driver": [
         "packages/postgres-driver/src/index.ts"
       ],
-      "@objx/mysql-driver": [
+      "@qbobjx/mysql-driver": [
         "packages/mysql-driver/src/index.ts"
       ]
     }

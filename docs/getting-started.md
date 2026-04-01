@@ -16,7 +16,7 @@ Generate an introspection snapshot from a real SQLite database:
 npm run codegen -- introspect --dialect sqlite3 --database ./app.sqlite --out ./generated/schema.json
 ```
 
-This uses the built-in `node:sqlite` adapter currently shipped in `@objx/codegen`.
+This uses the built-in `node:sqlite` adapter currently shipped in `@qbobjx/codegen`.
 
 ## 2. Generate Models
 

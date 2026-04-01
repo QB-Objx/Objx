@@ -16,39 +16,39 @@ Estado atual do projeto:
 
 Pacotes publicados pelo workspace:
 
-- `@objx/core`: models, colunas, relacoes, query builder e contexto de execucao
-- `@objx/sql-engine`: compilador SQL, sessao, raw SQL e runtime de execucao
-- `@objx/sqlite-driver`: sessao/driver oficial para SQLite
-- `@objx/postgres-driver`: sessao/driver oficial para Postgres
-- `@objx/mysql-driver`: sessao/driver oficial para MySQL
-- `@objx/plugins`: plugins oficiais
-- `@objx/codegen`: introspection, templates, codegen, migrations e seeds multi-dialeto
-- `@objx/validation`: adapters oficiais e runtime de validacao
+- `@qbobjx/core`: models, colunas, relacoes, query builder e contexto de execucao
+- `@qbobjx/sql-engine`: compilador SQL, sessao, raw SQL e runtime de execucao
+- `@qbobjx/sqlite-driver`: sessao/driver oficial para SQLite
+- `@qbobjx/postgres-driver`: sessao/driver oficial para Postgres
+- `@qbobjx/mysql-driver`: sessao/driver oficial para MySQL
+- `@qbobjx/plugins`: plugins oficiais
+- `@qbobjx/codegen`: introspection, templates, codegen, migrations e seeds multi-dialeto
+- `@qbobjx/validation`: adapters oficiais e runtime de validacao
 
 ## Instalacao
 
 Caminho feliz para SQLite:
 
 ```bash
-npm install @objx/core @objx/sql-engine @objx/sqlite-driver @objx/plugins
+npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/sqlite-driver @qbobjx/plugins
 ```
 
 Para usar Postgres:
 
 ```bash
-npm install @objx/core @objx/sql-engine @objx/postgres-driver @objx/plugins pg
+npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/postgres-driver @qbobjx/plugins pg
 ```
 
 Para usar MySQL:
 
 ```bash
-npm install @objx/core @objx/sql-engine @objx/mysql-driver @objx/plugins mysql2
+npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/mysql-driver @qbobjx/plugins mysql2
 ```
 
 Para tooling e codegen:
 
 ```bash
-npm install -D @objx/codegen
+npm install -D @qbobjx/codegen
 ```
 
 ## Quick Start
@@ -62,13 +62,13 @@ import {
   createExecutionContextManager,
   defineModel,
   hasMany,
-} from '@objx/core';
-import { createSqliteSession } from '@objx/sqlite-driver';
+} from '@qbobjx/core';
+import { createSqliteSession } from '@qbobjx/sqlite-driver';
 import {
   createAuditTrailPlugin,
   createSoftDeletePlugin,
   createTenantScopePlugin,
-} from '@objx/plugins';
+} from '@qbobjx/plugins';
 
 const auditEntries: unknown[] = [];
 
@@ -191,7 +191,7 @@ Helpers comuns:
 Exemplo:
 
 ```ts
-import { col, defineModel } from '@objx/core';
+import { col, defineModel } from '@qbobjx/core';
 
 export const Task = defineModel({
   name: 'Task',
@@ -218,7 +218,7 @@ Relacoes suportadas:
 Exemplo com `belongsToOne` e `hasMany`:
 
 ```ts
-import { belongsToOne, col, defineModel, hasMany } from '@objx/core';
+import { belongsToOne, col, defineModel, hasMany } from '@qbobjx/core';
 
 export const Author = defineModel({
   table: 'authors',
@@ -266,7 +266,7 @@ export const Comment = defineModel({
 Exemplo de `manyToMany`:
 
 ```ts
-import { col, defineModel, manyToMany } from '@objx/core';
+import { col, defineModel, manyToMany } from '@qbobjx/core';
 
 const Tag = defineModel({
   table: 'tags',
@@ -314,7 +314,7 @@ OBJX nao cria conexao de rede sozinho. Voce entrega um banco SQLite ou um pool/c
 Forma mais simples:
 
 ```ts
-import { createSqliteSession } from '@objx/sqlite-driver';
+import { createSqliteSession } from '@qbobjx/sqlite-driver';
 
 const session = createSqliteSession({
   databasePath: './app.sqlite',
@@ -327,7 +327,7 @@ Com `DatabaseSync` proprio:
 
 ```ts
 import { DatabaseSync } from 'node:sqlite';
-import { createSqliteSession } from '@objx/sqlite-driver';
+import { createSqliteSession } from '@qbobjx/sqlite-driver';
 
 const database = new DatabaseSync('./app.sqlite');
 
@@ -343,7 +343,7 @@ O driver espera algo compativel com `pg`:
 
 ```ts
 import { Pool } from 'pg';
-import { createPostgresSession } from '@objx/postgres-driver';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -363,7 +363,7 @@ O driver espera algo compativel com `mysql2/promise`:
 
 ```ts
 import mysql from 'mysql2/promise';
-import { createMySqlSession } from '@objx/mysql-driver';
+import { createMySqlSession } from '@qbobjx/mysql-driver';
 
 const pool = mysql.createPool({
   uri: process.env.DATABASE_URL,
@@ -390,7 +390,7 @@ O contexto de execucao existe para:
 No Node, o `ExecutionContextManager` usa `AsyncLocalStorage` por padrao.
 
 ```ts
-import { createExecutionContextManager } from '@objx/core';
+import { createExecutionContextManager } from '@qbobjx/core';
 
 const executionContextManager = createExecutionContextManager();
 
@@ -685,7 +685,7 @@ import {
   createSoftDeletePlugin,
   createTenantScopePlugin,
   createTimestampsPlugin,
-} from '@objx/plugins';
+} from '@qbobjx/plugins';
 
 const auditEntries: unknown[] = [];
 
@@ -785,7 +785,7 @@ Helpers:
 Exemplo:
 
 ```ts
-import { identifier, sql } from '@objx/sql-engine';
+import { identifier, sql } from '@qbobjx/sql-engine';
 
 const result = await session.execute(
   sql`select count(*) as ${identifier('totalProjects')} from ${identifier('projects')}`,
@@ -797,7 +797,7 @@ console.log(result.rows[0]?.totalProjects);
 Referencias:
 
 ```ts
-import { ref } from '@objx/sql-engine';
+import { ref } from '@qbobjx/sql-engine';
 
 const compiled = session.compile(
   Project.query().where(({ createdAt }, op) => op.isNotNull(createdAt)),
@@ -832,7 +832,7 @@ const session = createSqliteSession({
 
 ## Codegen, Introspection, Migrations E Seeds
 
-O pacote `@objx/codegen` cobre:
+O pacote `@qbobjx/codegen` cobre:
 
 - introspection real de SQLite
 - geracao de models

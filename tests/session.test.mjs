@@ -9,14 +9,14 @@ import {
   defineModel,
   hasMany,
   hasOne,
-} from '@objx/core';
+} from '@qbobjx/core';
 import {
   defineMigration,
   defineSeed,
   runMigrationSchema,
   runCodegenCli,
   runSeedSchema,
-} from '@objx/codegen';
+} from '@qbobjx/codegen';
 import {
   ObjxSqlCompiler,
   createSession,
@@ -24,12 +24,12 @@ import {
   ref,
   resolveSqlDialectName,
   sql,
-} from '@objx/sql-engine';
+} from '@qbobjx/sql-engine';
 import {
   createAuditTrailPlugin,
   createSoftDeletePlugin,
   createTenantScopePlugin,
-} from '@objx/plugins';
+} from '@qbobjx/plugins';
 import {
   createSqliteDriver,
   createSqliteSession,
@@ -1423,7 +1423,7 @@ const tests = [
 
         await writeFile(
           path.join(migrationDir, '000001_create_projects.migration.mjs'),
-          `import { defineMigration } from '@objx/codegen';
+          `import { defineMigration } from '@qbobjx/codegen';
 
 export default defineMigration({
   name: '000001_create_projects',
@@ -1440,7 +1440,7 @@ export default defineMigration({
 
         await writeFile(
           path.join(migrationDir, '000002_index_projects_name.migration.mjs'),
-          `import { defineMigration } from '@objx/codegen';
+          `import { defineMigration } from '@qbobjx/codegen';
 
 export default defineMigration({
   name: '000002_index_projects_name',
@@ -1457,7 +1457,7 @@ export default defineMigration({
 
         await writeFile(
           path.join(seedDir, '000001_projects.seed.mjs'),
-          `import { defineSeed } from '@objx/codegen';
+          `import { defineSeed } from '@qbobjx/codegen';
 
 export default defineSeed({
   name: '000001_projects',

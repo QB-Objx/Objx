@@ -11,14 +11,14 @@ const nodeCommand = process.execPath;
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const workspacePackages = new Map([
-  ['@objx/core', path.join(rootDir, 'packages', 'core')],
-  ['@objx/sql-engine', path.join(rootDir, 'packages', 'sql-engine')],
-  ['@objx/plugins', path.join(rootDir, 'packages', 'plugins')],
-  ['@objx/validation', path.join(rootDir, 'packages', 'validation')],
-  ['@objx/codegen', path.join(rootDir, 'packages', 'codegen')],
-  ['@objx/sqlite-driver', path.join(rootDir, 'packages', 'sqlite-driver')],
-  ['@objx/postgres-driver', path.join(rootDir, 'packages', 'postgres-driver')],
-  ['@objx/mysql-driver', path.join(rootDir, 'packages', 'mysql-driver')],
+  ['@qbobjx/core', path.join(rootDir, 'packages', 'core')],
+  ['@qbobjx/sql-engine', path.join(rootDir, 'packages', 'sql-engine')],
+  ['@qbobjx/plugins', path.join(rootDir, 'packages', 'plugins')],
+  ['@qbobjx/validation', path.join(rootDir, 'packages', 'validation')],
+  ['@qbobjx/codegen', path.join(rootDir, 'packages', 'codegen')],
+  ['@qbobjx/sqlite-driver', path.join(rootDir, 'packages', 'sqlite-driver')],
+  ['@qbobjx/postgres-driver', path.join(rootDir, 'packages', 'postgres-driver')],
+  ['@qbobjx/mysql-driver', path.join(rootDir, 'packages', 'mysql-driver')],
 ]);
 const workspacePackageJsonCache = new Map();
 
@@ -163,10 +163,10 @@ function createSqliteSmokeScript() {
   col,
   createExecutionContextManager,
   defineModel,
-} from '@objx/core';
-import { createTenantScopePlugin } from '@objx/plugins';
-import { identifier, sql } from '@objx/sql-engine';
-import { createSqliteSession } from '@objx/sqlite-driver';
+} from '@qbobjx/core';
+import { createTenantScopePlugin } from '@qbobjx/plugins';
+import { identifier, sql } from '@qbobjx/sql-engine';
+import { createSqliteSession } from '@qbobjx/sqlite-driver';
 
 const Project = defineModel({
   table: 'projects',
@@ -223,10 +223,10 @@ import {
   col,
   createExecutionContextManager,
   defineModel,
-} from '@objx/core';
-import { createTenantScopePlugin } from '@objx/plugins';
-import { identifier, sql } from '@objx/sql-engine';
-import { createPostgresSession } from '@objx/postgres-driver';
+} from '@qbobjx/core';
+import { createTenantScopePlugin } from '@qbobjx/plugins';
+import { identifier, sql } from '@qbobjx/sql-engine';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
 
 if (typeof pg.Pool !== 'function') {
   throw new Error('Expected pg to be installed for the Postgres consumer.');
@@ -339,10 +339,10 @@ import {
   col,
   createExecutionContextManager,
   defineModel,
-} from '@objx/core';
-import { createTenantScopePlugin } from '@objx/plugins';
-import { identifier, sql } from '@objx/sql-engine';
-import { createMySqlSession } from '@objx/mysql-driver';
+} from '@qbobjx/core';
+import { createTenantScopePlugin } from '@qbobjx/plugins';
+import { identifier, sql } from '@qbobjx/sql-engine';
+import { createMySqlSession } from '@qbobjx/mysql-driver';
 
 if (typeof mysql.createPool !== 'function') {
   throw new Error('Expected mysql2/promise to be installed for the MySQL consumer.');
@@ -447,7 +447,7 @@ function createCodegenSmokeScript() {
   createSqliteStarterTemplate,
   defineMigration,
   defineSeed,
-} from '@objx/codegen';
+} from '@qbobjx/codegen';
 
 const starterTemplate = createSqliteStarterTemplate({
   outDir: 'starter',
@@ -521,7 +521,7 @@ async function main() {
     await installDependencies(
       sqliteConsumer,
       await resolveWorkspaceInstallDependencies(
-        ['@objx/core', '@objx/sql-engine', '@objx/sqlite-driver', '@objx/plugins'],
+        ['@qbobjx/core', '@qbobjx/sql-engine', '@qbobjx/sqlite-driver', '@qbobjx/plugins'],
         tarballs,
       ),
     );
@@ -530,7 +530,7 @@ async function main() {
     const postgresConsumer = await createConsumerProject(tempDirectory, 'postgres-consumer');
     await installDependencies(postgresConsumer, [
       ...(await resolveWorkspaceInstallDependencies(
-        ['@objx/core', '@objx/sql-engine', '@objx/postgres-driver', '@objx/plugins'],
+        ['@qbobjx/core', '@qbobjx/sql-engine', '@qbobjx/postgres-driver', '@qbobjx/plugins'],
         tarballs,
       )),
       'pg',
@@ -540,7 +540,7 @@ async function main() {
     const mysqlConsumer = await createConsumerProject(tempDirectory, 'mysql-consumer');
     await installDependencies(mysqlConsumer, [
       ...(await resolveWorkspaceInstallDependencies(
-        ['@objx/core', '@objx/sql-engine', '@objx/mysql-driver', '@objx/plugins'],
+        ['@qbobjx/core', '@qbobjx/sql-engine', '@qbobjx/mysql-driver', '@qbobjx/plugins'],
         tarballs,
       )),
       'mysql2',
@@ -548,7 +548,7 @@ async function main() {
     await runSmokeScript(mysqlConsumer, 'smoke.mjs', createMySqlSmokeScript());
 
     const codegenConsumer = await createConsumerProject(tempDirectory, 'codegen-consumer');
-    await installDependencies(codegenConsumer, [tarballs.get('@objx/codegen')], {
+    await installDependencies(codegenConsumer, [tarballs.get('@qbobjx/codegen')], {
       dev: true,
     });
     await runSmokeScript(codegenConsumer, 'smoke.mjs', createCodegenSmokeScript());

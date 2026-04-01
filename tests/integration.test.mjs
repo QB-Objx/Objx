@@ -5,8 +5,8 @@ import path from 'node:path';
 import pg from 'pg';
 import mysql from 'mysql2/promise';
 
-import { col, defineModel } from '@objx/core';
-import { runCodegenCli } from '@objx/codegen';
+import { col, defineModel } from '@qbobjx/core';
+import { runCodegenCli } from '@qbobjx/codegen';
 import { createMySqlSession } from '../packages/mysql-driver/dist/index.js';
 import { createPostgresSession } from '../packages/postgres-driver/dist/index.js';
 

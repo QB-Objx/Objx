@@ -4,14 +4,14 @@
   "commit": false,
   "fixed": [
     [
-      "@objx/core",
-      "@objx/sql-engine",
-      "@objx/plugins",
-      "@objx/validation",
-      "@objx/codegen",
-      "@objx/sqlite-driver",
-      "@objx/postgres-driver",
-      "@objx/mysql-driver"
+      "@qbobjx/core",
+      "@qbobjx/sql-engine",
+      "@qbobjx/plugins",
+      "@qbobjx/validation",
+      "@qbobjx/codegen",
+      "@qbobjx/sqlite-driver",
+      "@qbobjx/postgres-driver",
+      "@qbobjx/mysql-driver"
     ]
   ],
   "linked": [],

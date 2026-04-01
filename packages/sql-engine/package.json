@@ -1,5 +1,5 @@
 {
-  "name": "@objx/sql-engine",
+  "name": "@qbobjx/sql-engine",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@objx/core": "0.1.0",
-    "@objx/validation": "0.1.0"
+    "@qbobjx/core": "0.1.0",
+    "@qbobjx/validation": "0.1.0"
   }
 }

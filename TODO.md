@@ -78,7 +78,7 @@ Regra:
 
 ## Fase 7: Tooling
 
-- [x] pacote `@objx/codegen`
+- [x] pacote `@qbobjx/codegen`
 - [x] introspection real do banco
 - [x] CLI
 - [x] templates
@@ -99,8 +99,8 @@ Regra:
 
 ## Fase 9: Paridade Multi-Dialeto
 
-- [x] introspection Postgres no `@objx/codegen`
-- [x] introspection MySQL no `@objx/codegen`
+- [x] introspection Postgres no `@qbobjx/codegen`
+- [x] introspection MySQL no `@qbobjx/codegen`
 - [x] runner de migrations para Postgres
 - [x] runner de migrations para MySQL
 - [x] runner de seeds para Postgres
@@ -116,7 +116,7 @@ Regra:
 
 ## Infra Do Motor SQL
 
-- [x] pacote `@objx/sql-engine`
+- [x] pacote `@qbobjx/sql-engine`
 - [x] compilador SQL ANSI
 - [x] compilador SQL Postgres
 - [x] sessao de execucao

@@ -27,21 +27,21 @@ import type {
   ModelPluginRegistration,
   ObjxPlugin,
   ObjxPluginRuntime,
-} from '@objx/core';
+} from '@qbobjx/core';
 import {
   createPluginRuntime,
   createExecutionContextManager,
   createTransactionScope,
   hydrateModelRows,
   op,
-} from '@objx/core';
+} from '@qbobjx/core';
 import {
   ObjxValidationError,
   VALIDATION_METADATA_KEY,
   type ValidationIssue,
   type ValidationOperation,
   type ValidationPluginMetadata,
-} from '@objx/validation';
+} from '@qbobjx/validation';
 
 export interface SqlParameter {
   readonly value: unknown;

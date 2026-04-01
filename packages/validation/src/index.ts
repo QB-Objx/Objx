@@ -1,4 +1,4 @@
-import { definePlugin, type ObjxPlugin } from '@objx/core';
+import { definePlugin, type ObjxPlugin } from '@qbobjx/core';
 
 export type ValidationOperation = 'insert' | 'update' | 'insertGraph' | 'upsertGraph';
 

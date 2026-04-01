@@ -1,5 +1,5 @@
 {
-  "name": "@objx/mysql-driver",
+  "name": "@qbobjx/mysql-driver",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@objx/sql-engine": "0.1.0"
+    "@qbobjx/sql-engine": "0.1.0"
   },
   "peerDependencies": {
     "mysql2": "^3.0.0"

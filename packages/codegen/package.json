@@ -1,5 +1,5 @@
 {
-  "name": "@objx/codegen",
+  "name": "@qbobjx/codegen",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -12,7 +12,7 @@
     "access": "public"
   },
   "bin": {
-    "objx-codegen": "./dist/cli.js"
+    "objx-codegen": "dist/cli.js"
   },
   "exports": {
     ".": {

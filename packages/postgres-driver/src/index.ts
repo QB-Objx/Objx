@@ -7,7 +7,7 @@ import {
   type SqlExecutionRequest,
   type SqlDriver,
   type SqlTransactionRequest,
-} from '@objx/sql-engine';
+} from '@qbobjx/sql-engine';
 
 export type PostgresQueryResultRow = Record<string, unknown>;
 

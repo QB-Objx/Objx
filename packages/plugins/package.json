@@ -1,5 +1,5 @@
 {
-  "name": "@objx/plugins",
+  "name": "@qbobjx/plugins",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -18,6 +18,6 @@
     }
   },
   "dependencies": {
-    "@objx/core": "0.1.0"
+    "@qbobjx/core": "0.1.0"
   }
 }
