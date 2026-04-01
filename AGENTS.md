@@ -4,7 +4,7 @@ Este arquivo define as regras de implementacao do projeto `OBJX`.
 
 ## Identidade Do Projeto
 
-- `OBJX` e um ORM novo, inspirado em Objection.js, mas nao e `Objection 4`.
+- `OBJX` e um ORM novo, inspirado em Objection.js.
 - O objetivo e unificar camada relacional, graph operations e motor SQL em um unico projeto coeso.
 - O projeto deve continuar SQL-first, TypeScript-first e plugin-first.
 

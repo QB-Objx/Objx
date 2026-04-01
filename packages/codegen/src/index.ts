@@ -1232,7 +1232,7 @@ function createMySqlHistoryAdapter(
             async insertAppliedName(name) {
               await client.query(
                 `insert into ${historyTable} (name, executedAt) values (?, ?)`,
-                [name, new Date().toISOString()],
+                [name, formatMySqlDateTime(new Date())],
               );
             },
             async deleteAppliedName(name) {
@@ -1561,6 +1561,12 @@ function quotePostgresIdentifier(identifier: string): string {
 
 function quoteMySqlIdentifier(identifier: string): string {
   return `\`${identifier.replaceAll('`', '``')}\``;
+}
+
+function formatMySqlDateTime(value: Date): string {
+  const pad = (part: number, length = 2): string => String(part).padStart(length, '0');
+
+  return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())} ${pad(value.getUTCHours())}:${pad(value.getUTCMinutes())}:${pad(value.getUTCSeconds())}.${pad(value.getUTCMilliseconds(), 3)}`;
 }
 
 function toPascalCase(value: string): string {

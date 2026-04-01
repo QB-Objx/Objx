@@ -316,17 +316,29 @@ class FakeMySqlCodegenPool {
     }
 
     if (lowered.startsWith('insert into `objx_migration_history`')) {
+      assert.match(
+        String(parameters[1]),
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/,
+        'Expected MySQL migration history timestamps in DATETIME(3) format.',
+      );
       this.history.migrations.push({
         id: this.history.migrations.length + 1,
         name: parameters[0],
+        executedAt: parameters[1],
       });
       return [{ affectedRows: 1 }];
     }
 
     if (lowered.startsWith('insert into `objx_seed_history`')) {
+      assert.match(
+        String(parameters[1]),
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/,
+        'Expected MySQL seed history timestamps in DATETIME(3) format.',
+      );
       this.history.seeds.push({
         id: this.history.seeds.length + 1,
         name: parameters[0],
+        executedAt: parameters[1],
       });
       return [{ affectedRows: 1 }];
     }

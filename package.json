@@ -12,6 +12,7 @@
     "changeset": "npx @changesets/cli@2.29.7",
     "codegen": "node packages/codegen/dist/cli.js",
     "lint": "eslint .",
+    "prepare": "node scripts/setup-husky.mjs",
     "publish:ci": "npm run build && npm run release",
     "release": "npx @changesets/cli@2.29.7 publish",
     "smoke:packages": "npm run build && node scripts/smoke-install.mjs",
@@ -21,11 +22,12 @@
     "version-packages": "npx @changesets/cli@2.29.7 version"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
     "@eslint/js": "^9.26.0",
+    "@types/node": "^24.3.0",
     "eslint": "^9.26.0",
     "globals": "^16.0.0",
-    "typescript-eslint": "^8.32.0",
-    "typescript": "^5.8.3"
+    "husky": "^9.1.7",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0"
   }
 }
