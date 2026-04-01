@@ -594,7 +594,7 @@ async function resolvePostgresCodegenRuntime(
           client.release();
         }
       },
-      async close() {},
+      async close() { },
     };
   }
 
@@ -608,7 +608,7 @@ async function resolvePostgresCodegenRuntime(
       async withTransactionClient(callback) {
         return callback(options.client!);
       },
-      async close() {},
+      async close() { },
     };
   }
 
@@ -704,7 +704,7 @@ async function resolveMySqlCodegenRuntime(
           connection.release();
         }
       },
-      async close() {},
+      async close() { },
     };
   }
 
@@ -716,7 +716,7 @@ async function resolveMySqlCodegenRuntime(
       async withTransactionClient(callback) {
         return callback(options.client!);
       },
-      async close() {},
+      async close() { },
     };
   }
 
@@ -1000,7 +1000,7 @@ async function importSchemaModule(filePath: string): Promise<Record<string, unkn
   } catch (error) {
     throw new Error(
       `Failed to import schema module "${filePath}". ` +
-        'Use JavaScript modules (.js, .mjs or .cjs) for migration/seed execution.',
+      'Use JavaScript modules (.js, .mjs or .cjs) for migration/seed execution.',
       {
         cause: error instanceof Error ? error : undefined,
       },
@@ -1587,15 +1587,15 @@ function renderColumnBuilder(column: IntrospectedColumn): string {
   const normalizedType = column.type.trim().toLowerCase();
   let builder =
     normalizedType === 'int' ||
-    normalizedType === 'integer' ||
-    normalizedType === 'bigint' ||
-    normalizedType === 'smallint'
+      normalizedType === 'integer' ||
+      normalizedType === 'bigint' ||
+      normalizedType === 'smallint'
       ? 'col.int()'
       : normalizedType === 'text' ||
-          normalizedType === 'varchar' ||
-          normalizedType === 'character varying' ||
-          normalizedType === 'char' ||
-          normalizedType === 'string'
+        normalizedType === 'varchar' ||
+        normalizedType === 'character varying' ||
+        normalizedType === 'char' ||
+        normalizedType === 'string'
         ? 'col.text()'
         : normalizedType === 'boolean' || normalizedType === 'bool'
           ? 'col.boolean()'
@@ -1604,9 +1604,9 @@ function renderColumnBuilder(column: IntrospectedColumn): string {
             : normalizedType === 'uuid'
               ? 'col.uuid()'
               : normalizedType === 'timestamp' ||
-                  normalizedType === 'timestamptz' ||
-                  normalizedType === 'datetime' ||
-                  normalizedType === 'date'
+                normalizedType === 'timestamptz' ||
+                normalizedType === 'datetime' ||
+                normalizedType === 'date'
                 ? 'col.timestamp()'
                 : `col.custom<unknown>(${JSON.stringify(column.type)})`;
 
@@ -1713,12 +1713,12 @@ export async function introspectSqliteDatabase(
       const columns = database
         .prepare(`pragma table_info(${quoteSqliteIdentifier(table.name)})`)
         .all() as unknown as readonly {
-        name: string;
-        type: string;
-        notnull: number;
-        pk: number;
-        dflt_value: string | null;
-      }[];
+          name: string;
+          type: string;
+          notnull: number;
+          pk: number;
+          dflt_value: string | null;
+        }[];
 
       introspectedTables.push({
         name: table.name,
@@ -1985,10 +1985,10 @@ export function createSqliteStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/sqlite-driver': '0.1.0',
+                '@qbobjx/core': '0.1.1',
+                '@qbobjx/sql-engine': '0.1.1',
+                '@qbobjx/plugins': '0.1.1',
+                '@qbobjx/sqlite-driver': '0.1.1',
               },
             },
             null,
@@ -2105,10 +2105,10 @@ export function createPostgresStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/postgres-driver': '0.1.0',
+                '@qbobjx/core': '0.1.1',
+                '@qbobjx/sql-engine': '0.1.1',
+                '@qbobjx/plugins': '0.1.1',
+                '@qbobjx/postgres-driver': '0.1.1',
                 pg: '^8.0.0',
               },
             },
@@ -2237,10 +2237,10 @@ export function createMySqlStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/mysql-driver': '0.1.0',
+                '@qbobjx/core': '0.1.1',
+                '@qbobjx/sql-engine': '0.1.1',
+                '@qbobjx/plugins': '0.1.1',
+                '@qbobjx/mysql-driver': '0.1.1',
                 mysql2: '^3.0.0',
               },
             },
@@ -2737,9 +2737,9 @@ export async function runCodegenCli(
       const template =
         options.templateName === 'migration-seed-schemas'
           ? createMigrationSeedSchemasTemplate({
-              outDir: options.outDir,
-              ...(options.dialect ? { dialect: options.dialect } : {}),
-            })
+            outDir: options.outDir,
+            ...(options.dialect ? { dialect: options.dialect } : {}),
+          })
           : options.templateName === 'postgres-starter'
             ? createPostgresStarterTemplate(templateOptions)
             : options.templateName === 'mysql-starter'
@@ -2755,26 +2755,26 @@ export async function runCodegenCli(
       const result =
         options.dialect === 'postgres'
           ? await runPostgresMigrations({
+            connectionString: options.databasePath,
+            directoryPath: path.resolve(cwd, options.directoryPath),
+            direction: options.direction,
+            ...(options.steps !== undefined ? { steps: options.steps } : {}),
+            ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
+          })
+          : options.dialect === 'mysql'
+            ? await runMySqlMigrations({
               connectionString: options.databasePath,
               directoryPath: path.resolve(cwd, options.directoryPath),
               direction: options.direction,
               ...(options.steps !== undefined ? { steps: options.steps } : {}),
               ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
             })
-          : options.dialect === 'mysql'
-            ? await runMySqlMigrations({
-                connectionString: options.databasePath,
-                directoryPath: path.resolve(cwd, options.directoryPath),
-                direction: options.direction,
-                ...(options.steps !== undefined ? { steps: options.steps } : {}),
-                ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
-              })
             : await runSqliteMigrations({
-                databasePath: path.resolve(cwd, options.databasePath),
-                directoryPath: path.resolve(cwd, options.directoryPath),
-                direction: options.direction,
-                ...(options.steps !== undefined ? { steps: options.steps } : {}),
-              });
+              databasePath: path.resolve(cwd, options.databasePath),
+              directoryPath: path.resolve(cwd, options.directoryPath),
+              direction: options.direction,
+              ...(options.steps !== undefined ? { steps: options.steps } : {}),
+            });
 
       stdout(
         `Migrations ${result.direction}: executed ${result.executed.length} of ${result.totalCandidates}.`,
@@ -2791,26 +2791,26 @@ export async function runCodegenCli(
       const result =
         options.dialect === 'postgres'
           ? await runPostgresSeeds({
+            connectionString: options.databasePath,
+            directoryPath: path.resolve(cwd, options.directoryPath),
+            direction: options.direction,
+            ...(options.steps !== undefined ? { steps: options.steps } : {}),
+            ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
+          })
+          : options.dialect === 'mysql'
+            ? await runMySqlSeeds({
               connectionString: options.databasePath,
               directoryPath: path.resolve(cwd, options.directoryPath),
               direction: options.direction,
               ...(options.steps !== undefined ? { steps: options.steps } : {}),
               ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
             })
-          : options.dialect === 'mysql'
-            ? await runMySqlSeeds({
-                connectionString: options.databasePath,
-                directoryPath: path.resolve(cwd, options.directoryPath),
-                direction: options.direction,
-                ...(options.steps !== undefined ? { steps: options.steps } : {}),
-                ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
-              })
             : await runSqliteSeeds({
-                databasePath: path.resolve(cwd, options.databasePath),
-                directoryPath: path.resolve(cwd, options.directoryPath),
-                direction: options.direction,
-                ...(options.steps !== undefined ? { steps: options.steps } : {}),
-              });
+              databasePath: path.resolve(cwd, options.databasePath),
+              directoryPath: path.resolve(cwd, options.directoryPath),
+              direction: options.direction,
+              ...(options.steps !== undefined ? { steps: options.steps } : {}),
+            });
 
       stdout(
         `Seeds ${result.direction}: executed ${result.executed.length} of ${result.totalCandidates}.`,
@@ -2826,17 +2826,17 @@ export async function runCodegenCli(
     const introspection =
       options.dialect === 'postgres'
         ? await introspectPostgresDatabase({
+          connectionString: options.databasePath,
+          ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
+        })
+        : options.dialect === 'mysql'
+          ? await introspectMySqlDatabase({
             connectionString: options.databasePath,
             ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
           })
-        : options.dialect === 'mysql'
-          ? await introspectMySqlDatabase({
-              connectionString: options.databasePath,
-              ...(environment.moduleLoader ? { moduleLoader: environment.moduleLoader } : {}),
-            })
           : await introspectSqliteDatabase({
-              databasePath: path.resolve(cwd, options.databasePath),
-            });
+            databasePath: path.resolve(cwd, options.databasePath),
+          });
     await writeIntrospectionFile(introspection, options.outPath, cwd);
     stdout(`Introspected ${introspection.tables.length} tables into ${options.outPath}.`);
     return 0;

@@ -1,6 +1,6 @@
 {
   "name": "@qbobjx/nestjs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "files": [
@@ -18,8 +18,8 @@
     }
   },
   "dependencies": {
-    "@qbobjx/core": "0.1.0",
-    "@qbobjx/validation": "0.1.0"
+    "@qbobjx/core": "0.1.1",
+    "@qbobjx/validation": "0.1.1"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
