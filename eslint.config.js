@@ -8,6 +8,8 @@ export default tseslint.config(
       '**/dist/**',
       '**/.tsbuildinfo',
       '**/*.d.ts',
+      'benchmarks/**/generated/**',
+      'benchmarks/**/out/**',
     ],
   },
   js.configs.recommended,
@@ -25,7 +27,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tests/**/*.mjs', 'examples/**/*.mjs', 'scripts/**/*.mjs', 'eslint.config.js'],
+    files: [
+      'tests/**/*.mjs',
+      'examples/**/*.mjs',
+      'scripts/**/*.mjs',
+      'benchmarks/**/*.mjs',
+      'eslint.config.js',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,

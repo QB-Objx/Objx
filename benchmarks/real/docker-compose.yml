@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: objx-bench-postgres
+    environment:
+      POSTGRES_DB: objx_bench
+      POSTGRES_USER: objx
+      POSTGRES_PASSWORD: objx
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U objx -d objx_bench"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - objx-bench-postgres:/var/lib/postgresql/data
+
+  mysql:
+    image: mysql:8.4
+    container_name: objx-bench-mysql
+    environment:
+      MYSQL_DATABASE: objx_bench
+      MYSQL_USER: objx
+      MYSQL_PASSWORD: objx
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uobjx -pobjx"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - objx-bench-mysql:/var/lib/mysql
+
+volumes:
+  objx-bench-postgres:
+  objx-bench-mysql:

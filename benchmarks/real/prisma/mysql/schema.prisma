@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../generated/prisma-mysql"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_DATABASE_URL")
+}
+
+model Person {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  pets      Pet[]
+
+  @@map("people")
+}
+
+model Pet {
+  id        Int      @id @default(autoincrement())
+  ownerId   Int      @map("owner_id")
+  name      String
+  species   String
+  adopted   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  owner     Person   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId], map: "idx_pets_owner_id")
+  @@map("pets")
+}

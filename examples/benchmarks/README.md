@@ -1,6 +1,11 @@
-# OBJX Public Benchmarks
+# OBJX Microbenchmarks
 
-This benchmark suite is the public and reproducible baseline for OBJX runtime and SQL compilation performance.
+This benchmark suite focuses on microbenchmarks for OBJX runtime and SQL compilation performance.
+
+For the official real-database comparison against `Prisma`, `Sequelize`, and `Knex`, use:
+
+- `benchmarks/real`
+- `npm run benchmark`
 
 ## What It Measures
 

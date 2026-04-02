@@ -1,0 +1,26 @@
+{
+  "name": "objx-real-benchmarks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:up": "docker compose up -d postgres mysql",
+    "db:down": "docker compose down -v",
+    "db:reset": "node scripts/reset-databases.mjs",
+    "prisma:generate:postgres": "node scripts/prisma-generate.mjs postgres",
+    "prisma:generate:mysql": "node scripts/prisma-generate.mjs mysql",
+    "prisma:generate": "node scripts/prisma-generate.mjs all",
+    "setup": "npm run db:reset && npm run prisma:generate",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:quick": "node scripts/benchmark.mjs --warmup 20 --iterations 80",
+    "benchmark:postgres": "node scripts/benchmark.mjs --dialects postgres",
+    "benchmark:mysql": "node scripts/benchmark.mjs --dialects mysql"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "knex": "^3.1.0",
+    "mysql2": "^3.12.0",
+    "pg": "^8.12.0",
+    "prisma": "^6.0.0",
+    "sequelize": "^6.37.5"
+  }
+}

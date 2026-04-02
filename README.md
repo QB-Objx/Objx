@@ -896,12 +896,26 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 - `examples/complex-runtime`: context, plugins, graph ops, nested eager loading, transactions, and raw SQL
 - `examples/express-api`: REST API with Express, SQLite, global session plugins, validation, and CRUD
 - `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and prewired session
-- `examples/benchmarks`: public compiler/runtime benchmark suite
+- `examples/benchmarks`: compiler/runtime microbenchmark suite
+- `benchmarks/real`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, and `Knex`
 
-## Public Benchmark
+## Real Benchmark
 
 ```bash
+npm run benchmark:install
+npm run benchmark:db:up
+npm run benchmark:setup
 npm run benchmark
+```
+
+Reference:
+
+- `benchmarks/real/README.md`
+
+## Microbenchmark
+
+```bash
+npm run benchmark:micro
 ```
 
 Reference:
