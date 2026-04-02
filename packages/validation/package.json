@@ -1,10 +1,11 @@
 {
   "name": "@qbobjx/validation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +19,6 @@
     }
   },
   "dependencies": {
-    "@qbobjx/core": "0.1.0"
+    "@qbobjx/core": "0.1.1"
   }
 }
-
