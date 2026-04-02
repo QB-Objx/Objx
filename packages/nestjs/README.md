@@ -1,98 +1,42 @@
 # @qbobjx/nestjs
 
-Integracao oficial do `OBJX` com NestJS.
+Official NestJS integration for OBJX.
 
-## O Que Esse Pacote Entrega
+## Install
+
+```bash
+npm install @qbobjx/nestjs @nestjs/common @nestjs/core rxjs
+```
+
+Add your driver and core packages as needed, for example:
+
+```bash
+npm install @qbobjx/core @qbobjx/sqlite-driver @qbobjx/plugins
+```
+
+## What You Get
 
 - `ObjxModule.forRoot(...)`
 - `ObjxModule.forRootAsync(...)`
-- token de injecao para a sessao `OBJX`
-- `ExecutionContext` por request via interceptor global
-- filtro global para `ObjxValidationError`
-- host de sessao com `dispose()` no shutdown da aplicacao
+- session injection token and `@InjectObjxSession()` helper
+- optional request-scoped execution context middleware/interceptor
+- global exception filter support for OBJX validation errors
 
-## Instalacao
-
-```bash
-npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express rxjs reflect-metadata
-```
-
-Voce tambem precisa do driver que for usar, por exemplo:
-
-```bash
-npm install @qbobjx/sqlite-driver @qbobjx/plugins @qbobjx/core
-```
-
-## Exemplo Rapido
+## Quick Usage
 
 ```ts
 import { Module } from '@nestjs/common';
-import { createExecutionContextManager } from '@qbobjx/core';
 import { ObjxModule } from '@qbobjx/nestjs';
-import { createSoftDeletePlugin } from '@qbobjx/plugins';
-import {
-  createSqliteDriver,
-  createSqliteSession,
-} from '@qbobjx/sqlite-driver';
 
 @Module({
   imports: [
     ObjxModule.forRootAsync({
       global: true,
-      useFactory: () => {
-        const executionContextManager = createExecutionContextManager();
-        const driver = createSqliteDriver({
-          databasePath: './app.sqlite',
-          pragmas: ['foreign_keys = on'],
-        });
-        const session = createSqliteSession({
-          driver,
-          executionContextManager,
-          hydrateByDefault: true,
-          plugins: [createSoftDeletePlugin()],
-        });
-
-        return {
-          session,
-          dispose: () => driver.close(),
-          requestContext: {
-            enabled: true,
-          },
-        };
-      },
+      useFactory: async () => ({
+        session: createSessionSomehow(),
+      }),
     }),
   ],
 })
 export class AppModule {}
 ```
-
-## Injecao Da Sessao
-
-```ts
-import { Injectable } from '@nestjs/common';
-import { InjectObjxSession } from '@qbobjx/nestjs';
-import { createSqliteSession } from '@qbobjx/sqlite-driver';
-
-@Injectable()
-export class ProjectsService {
-  constructor(
-    @InjectObjxSession()
-    private readonly session: ReturnType<typeof createSqliteSession>,
-  ) {}
-}
-```
-
-## Request Context
-
-Por padrao, o interceptor le:
-
-- `x-tenant-id`
-- `x-actor-id`
-- `x-request-id`
-
-E adiciona tambem:
-
-- `requestMethod`
-- `requestPath`
-
-Voce pode sobrescrever isso usando `requestContext.resolveValues`.

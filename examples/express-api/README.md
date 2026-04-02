@@ -1,51 +1,51 @@
 # OBJX Express API
 
-Exemplo de API REST com Express usando `OBJX` como ORM/query builder.
+Example REST API built with Express using `OBJX` as ORM/query builder.
 
-## O Que Esse Exemplo Mostra
+## What This Example Shows
 
-- sessao SQLite com `@qbobjx/sqlite-driver`
-- plugins globais configurados na criacao da sessao
-- `tenant scope`, `soft delete` e `audit trail`
-- validacao por model com `@qbobjx/validation` + `zod`
-- `insertGraph`, eager loading e transacoes
-- middleware HTTP que injeta `tenantId` e `actorId` no `ExecutionContext`
+- SQLite session with `@qbobjx/sqlite-driver`
+- global plugins configured at session creation time
+- `tenant scope`, `soft delete`, and `audit trail`
+- model-level validation with `@qbobjx/validation` + `zod`
+- `insertGraph`, eager loading, and transactions
+- HTTP middleware that injects `tenantId` and `actorId` into `ExecutionContext`
 
-## Dependencias
+## Install
 
 ```bash
 npm install
 ```
 
-## Rodando
+## Run
 
 ```bash
 npm run dev
 ```
 
-Servidor padrao:
+Default server:
 
 - `http://127.0.0.1:3000`
 
-O schema em `schema.sql` e aplicado automaticamente no bootstrap.
+The schema in `schema.sql` is applied automatically during bootstrap.
 
 ## Headers
 
-Todas as rotas de negocio exigem:
+Business routes require:
 
 - `x-tenant-id`
 
-Opcionalmente:
+Optionally:
 
 - `x-actor-id`
 
-Exemplo:
+Example:
 
 ```bash
 curl -H "x-tenant-id: demo" http://127.0.0.1:3000/projects
 ```
 
-## Rotas
+## Routes
 
 - `GET /health`
 - `GET /projects`
@@ -57,9 +57,9 @@ curl -H "x-tenant-id: demo" http://127.0.0.1:3000/projects
 - `DELETE /projects/:projectId`
 - `GET /audit`
 
-## Fluxo Basico
+## Basic Flow
 
-Criar projeto com tasks:
+Create a project with tasks:
 
 ```bash
 curl -X POST http://127.0.0.1:3000/projects \
@@ -76,13 +76,13 @@ curl -X POST http://127.0.0.1:3000/projects \
   }'
 ```
 
-Listar projetos com relacionados:
+List projects with relations:
 
 ```bash
 curl -H "x-tenant-id: demo" http://127.0.0.1:3000/projects
 ```
 
-Concluir projeto dentro de transacao:
+Complete a project inside a transaction:
 
 ```bash
 curl -X POST \
@@ -100,16 +100,16 @@ curl -X DELETE \
   http://127.0.0.1:3000/projects/1
 ```
 
-Consultar incluindo deletados:
+Query including deleted rows:
 
 ```bash
 curl -H "x-tenant-id: demo" \
   "http://127.0.0.1:3000/projects?deleted=include"
 ```
 
-## Arquivos
+## Files
 
-- `schema.sql`: schema SQLite
-- `src/db.mjs`: bootstrap da sessao e plugins globais
-- `src/models.mjs`: models e validacao
-- `src/app.mjs`: API Express
+- `schema.sql`: SQLite schema
+- `src/db.mjs`: session bootstrap and global plugins
+- `src/models.mjs`: models and validation
+- `src/app.mjs`: Express API

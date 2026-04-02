@@ -1,72 +1,72 @@
 # OBJX NestJS API
 
-Exemplo de API com NestJS usando `@qbobjx/nestjs` em cima de SQLite.
+Example API built with NestJS using `@qbobjx/nestjs` on top of SQLite.
 
-## O Que Esse Exemplo Mostra
+## What This Example Shows
 
-- `ObjxModule.forRootAsync(...)` com sessao pronta para Nest
-- contexto por request via interceptor global do pacote Nest
-- filtro global para `ObjxValidationError`
-- `tenant scope`, `soft delete`, `audit trail` e validacao
-- migrations e seeds com `@qbobjx/codegen`
-- transacoes, eager loading e `insertGraph`
+- `ObjxModule.forRootAsync(...)` with a ready-to-use OBJX session
+- request context via the package global interceptor
+- global filter for `ObjxValidationError`
+- `tenant scope`, `soft delete`, `audit trail`, and validation
+- migrations and seeds with `@qbobjx/codegen`
+- transactions, eager loading, and `insertGraph`
 
-## Instalacao
+## Install
 
 ```bash
 npm install
 ```
 
-## Banco De Dados
+## Database
 
-Esse exemplo usa o fluxo certo:
+This example follows the migration/seed workflow:
 
 - `db/migrations/*.migration.mjs`
 - `db/seeds/*.seed.mjs`
-- nenhum schema e aplicado automaticamente no startup da API
+- schema is not applied automatically when the API starts
 
-Prepare o banco antes de subir a aplicacao:
+Prepare the database before starting the app:
 
 ```bash
 npm run db:setup
 ```
 
-Ou, passo a passo:
+Or run step by step:
 
 ```bash
 npm run db:migrate
 npm run db:seed
 ```
 
-Para desfazer:
+To revert:
 
 ```bash
 npm run db:seed:revert
 npm run db:migrate:down
 ```
 
-## Rodando
+## Run
 
 ```bash
 npm run dev
 ```
 
-Servidor padrao:
+Default server:
 
 - `http://127.0.0.1:3001`
 
 ## Headers
 
-As rotas de negocio usam:
+Business routes use:
 
 - `x-tenant-id`
 
-Opcionalmente:
+Optionally:
 
 - `x-actor-id`
 - `x-request-id`
 
-## Rotas
+## Routes
 
 - `GET /health`
 - `GET /audit`
@@ -78,15 +78,15 @@ Opcionalmente:
 - `POST /projects/:projectId/complete`
 - `DELETE /projects/:projectId`
 
-## Exemplo Rapido
+## Quick Example
 
-Listar seed inicial:
+List seeded projects:
 
 ```bash
 curl -H "x-tenant-id: demo" http://127.0.0.1:3001/projects
 ```
 
-Criar projeto com tasks:
+Create a project with tasks:
 
 ```bash
 curl -X POST http://127.0.0.1:3001/projects \
@@ -103,12 +103,12 @@ curl -X POST http://127.0.0.1:3001/projects \
   }'
 ```
 
-## Arquivos
+## Files
 
-- `db/migrations`: schema versionado
-- `db/seeds`: dados iniciais versionados
-- `src/objx.options.ts`: fabrica do `ObjxModule`
-- `src/models.ts`: models e validacao
-- `src/projects.service.ts`: regras de aplicacao
-- `src/projects.controller.ts`: rotas REST
-- `src/main.ts`: bootstrap NestJS
+- `db/migrations`: versioned schema
+- `db/seeds`: versioned initial data
+- `src/objx.options.ts`: `ObjxModule` factory
+- `src/models.ts`: models and validation
+- `src/projects.service.ts`: application rules
+- `src/projects.controller.ts`: REST routes
+- `src/main.ts`: NestJS bootstrap

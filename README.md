@@ -1,58 +1,58 @@
 # OBJX
 
-`OBJX` e um ORM SQL-first para TypeScript inspirado no Objection.js e redesenhado com um motor SQL embutido, runtime moderno e foco em extensibilidade.
+`OBJX` is a SQL-first ORM for TypeScript inspired by Objection.js and redesigned with an embedded SQL engine, modern runtime, and first-class extensibility.
 
-Estado atual do projeto:
+Current project status:
 
-- models tipados com `defineModel`
-- query builder tipado e compilador SQL embutido
-- drivers oficiais para SQLite, Postgres e MySQL
+- typed models with `defineModel`
+- typed query builder and embedded SQL compiler
+- official drivers for SQLite, Postgres, and MySQL
 - `insertGraph`, `upsertGraph`, `relate`, `unrelate`
-- eager loading simples, nested e expressoes compostas de relacao
-- plugins oficiais para `timestamps`, `soft delete`, `audit trail` e `tenant scope`
-- codegen, introspection SQLite, templates, migrations e seeds tipados
+- simple eager loading, nested eager loading, and composed relation expressions
+- official plugins for `timestamps`, `soft delete`, `audit trail`, and `tenant scope`
+- codegen, SQLite introspection, templates, typed migrations, and typed seeds
 
-## Pacotes
+## Packages
 
-Pacotes publicados pelo workspace:
+Published workspace packages:
 
-- `@qbobjx/core`: models, colunas, relacoes, query builder e contexto de execucao
-- `@qbobjx/sql-engine`: compilador SQL, sessao, raw SQL e runtime de execucao
-- `@qbobjx/sqlite-driver`: sessao/driver oficial para SQLite
-- `@qbobjx/postgres-driver`: sessao/driver oficial para Postgres
-- `@qbobjx/mysql-driver`: sessao/driver oficial para MySQL
-- `@qbobjx/nestjs`: integracao oficial com NestJS, modulo dinamico, contexto por request e filtro de validacao
-- `@qbobjx/plugins`: plugins oficiais
-- `@qbobjx/codegen`: introspection, templates, codegen, migrations e seeds multi-dialeto
-- `@qbobjx/validation`: adapters oficiais e runtime de validacao
+- `@qbobjx/core`: models, columns, relations, query builder, and execution context
+- `@qbobjx/sql-engine`: SQL compiler, session runtime, raw SQL helpers, and execution engine
+- `@qbobjx/sqlite-driver`: official SQLite session/driver
+- `@qbobjx/postgres-driver`: official Postgres session/driver
+- `@qbobjx/mysql-driver`: official MySQL session/driver
+- `@qbobjx/nestjs`: official NestJS integration with dynamic module, request context, and validation filter
+- `@qbobjx/plugins`: official plugins
+- `@qbobjx/codegen`: introspection, templates, codegen, migrations, and seeds
+- `@qbobjx/validation`: official validation adapters and runtime contracts
 
-## Instalacao
+## Installation
 
-Caminho feliz para SQLite:
+Happy path for SQLite:
 
 ```bash
 npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/sqlite-driver @qbobjx/plugins
 ```
 
-Para usar Postgres:
+For Postgres:
 
 ```bash
 npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/postgres-driver @qbobjx/plugins pg
 ```
 
-Para usar MySQL:
+For MySQL:
 
 ```bash
 npm install @qbobjx/core @qbobjx/sql-engine @qbobjx/mysql-driver @qbobjx/plugins mysql2
 ```
 
-Para tooling e codegen:
+For tooling and codegen:
 
 ```bash
 npm install -D @qbobjx/codegen
 ```
 
-Para integrar com NestJS:
+For NestJS integration:
 
 ```bash
 npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express rxjs reflect-metadata
@@ -60,7 +60,7 @@ npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express 
 
 ## Quick Start
 
-Exemplo minimo com SQLite, contexto de execucao, plugins e uma query tipada:
+Minimal example with SQLite, execution context, plugins, and a typed query:
 
 ```ts
 import {
@@ -176,9 +176,9 @@ const rows = await executionContextManager.run(
 console.log(rows);
 ```
 
-## Definindo Models
+## Defining Models
 
-Colunas disponiveis no core:
+Available core column builders:
 
 - `col.int()`
 - `col.text()`
@@ -188,14 +188,14 @@ Colunas disponiveis no core:
 - `col.timestamp()`
 - `col.custom<T, TKind>()`
 
-Helpers comuns:
+Common helpers:
 
 - `.primary()`
 - `.nullable()`
 - `.default(value)`
 - `.configure({ ... })`
 
-Exemplo:
+Example:
 
 ```ts
 import { col, defineModel } from '@qbobjx/core';
@@ -213,16 +213,16 @@ export const Task = defineModel({
 });
 ```
 
-## Relacoes
+## Relations
 
-Relacoes suportadas:
+Supported relation builders:
 
 - `belongsToOne`
 - `hasOne`
 - `hasMany`
 - `manyToMany`
 
-Exemplo com `belongsToOne` e `hasMany`:
+Example with `belongsToOne` and `hasMany`:
 
 ```ts
 import { belongsToOne, col, defineModel, hasMany } from '@qbobjx/core';
@@ -270,7 +270,7 @@ export const Comment = defineModel({
 });
 ```
 
-Exemplo de `manyToMany`:
+Example with `manyToMany`:
 
 ```ts
 import { col, defineModel, manyToMany } from '@qbobjx/core';
@@ -312,13 +312,13 @@ const ArticleWithTags = defineModel({
 });
 ```
 
-## Configurando A Conexao
+## Configuring The Connection
 
-OBJX nao cria conexao de rede sozinho. Voce entrega um banco SQLite ou um pool/client compativel para o driver oficial.
+OBJX does not create network connections by itself. You provide a SQLite database or a pool/client compatible with an official driver.
 
 ### SQLite
 
-Forma mais simples:
+Simple setup:
 
 ```ts
 import { createSqliteSession } from '@qbobjx/sqlite-driver';
@@ -330,7 +330,7 @@ const session = createSqliteSession({
 });
 ```
 
-Com `DatabaseSync` proprio:
+Using your own `DatabaseSync`:
 
 ```ts
 import { DatabaseSync } from 'node:sqlite';
@@ -346,7 +346,7 @@ const session = createSqliteSession({
 
 ### Postgres
 
-O driver espera algo compativel com `pg`:
+The driver expects something compatible with `pg`:
 
 ```ts
 import { Pool } from 'pg';
@@ -362,11 +362,11 @@ const session = createPostgresSession({
 });
 ```
 
-Voce tambem pode passar um `client` em vez de `pool`.
+You can also pass a `client` instead of a `pool`.
 
 ### MySQL
 
-O driver espera algo compativel com `mysql2/promise`:
+The driver expects something compatible with `mysql2/promise`:
 
 ```ts
 import mysql from 'mysql2/promise';
@@ -382,19 +382,19 @@ const session = createMySqlSession({
 });
 ```
 
-Voce tambem pode passar um `client` em vez de `pool`.
+You can also pass a `client` instead of a `pool`.
 
-## Contexto De Execucao
+## Execution Context
 
-O contexto de execucao existe para:
+Execution context is used for:
 
 - tenant scope
-- actor id para auditoria
+- actor id for audit
 - tracing
-- transacoes ambientadas
-- metadata de request
+- ambient transactions
+- request metadata
 
-No Node, o `ExecutionContextManager` usa `AsyncLocalStorage` por padrao.
+In Node.js, `ExecutionContextManager` uses `AsyncLocalStorage` by default.
 
 ```ts
 import { createExecutionContextManager } from '@qbobjx/core';
@@ -415,16 +415,16 @@ await executionContextManager.run(
 );
 ```
 
-Se voce passar `executionContextManager` na criacao da sessao, `session.execute(...)` e `session.transaction(...)` usam esse contexto automaticamente.
+If you pass `executionContextManager` when creating a session, `session.execute(...)` and `session.transaction(...)` reuse that context automatically.
 
-## Executando Queries
+## Running Queries
 
-`session.execute(...)` aceita:
+`session.execute(...)` accepts:
 
-- builders tipados (`model.query()`, `model.insert()`, `model.update()`, `model.delete()`)
-- AST interna
-- SQL bruto via `sql\`\``
-- query compilada via `session.compile(...)`
+- typed builders (`model.query()`, `model.insert()`, `model.update()`, `model.delete()`)
+- internal AST
+- raw SQL via `sql\`\``
+- compiled query output from `session.compile(...)`
 
 ### Select
 
@@ -439,7 +439,7 @@ const projects = await session.execute(
 );
 ```
 
-### Predicados Compostos
+### Composed Predicates
 
 ```ts
 const rows = await session.execute(
@@ -469,7 +469,7 @@ const inserted = await session.execute(
 
 ### Update
 
-Sem `returning`, o resultado padrao e quantidade de linhas afetadas:
+Without `returning`, the default result is affected row count:
 
 ```ts
 const count = await session.execute(
@@ -477,7 +477,7 @@ const count = await session.execute(
 );
 ```
 
-Com `returning`, o resultado vira array tipado:
+With `returning`, the result is a typed array:
 
 ```ts
 const updated = await session.execute(
@@ -496,7 +496,7 @@ const deletedCount = await session.execute(
 );
 ```
 
-Se o model tiver `soft delete`, `delete()` reescreve para `update`. Para remocao fisica:
+If the model uses `soft delete`, `delete()` is rewritten to `update`. For hard delete:
 
 ```ts
 await session.execute(
@@ -504,9 +504,9 @@ await session.execute(
 );
 ```
 
-## Eager Loading E Join Planning
+## Eager Loading And Join Planning
 
-Eager loading tipado:
+Typed eager loading:
 
 ```ts
 const rows = await session.execute(
@@ -524,7 +524,7 @@ const rows = await session.execute(
 );
 ```
 
-String expression tambem funciona:
+String expression eager loading also works:
 
 ```ts
 await session.execute(
@@ -533,7 +533,7 @@ await session.execute(
 );
 ```
 
-Join por relacao:
+Relation join planning:
 
 ```ts
 const compiled = session.compile(
@@ -608,11 +608,11 @@ await session.relate(Project, 1, 'tasks', 99);
 await session.unrelate(Project, 1, 'tasks', 99);
 ```
 
-## Transacoes
+## Transactions
 
-Toda sessao oficial suporta `session.transaction(...)`.
+Every official session supports `session.transaction(...)`.
 
-### Transacao Basica
+### Basic Transaction
 
 ```ts
 await session.transaction(async (trxSession) => {
@@ -631,7 +631,7 @@ await session.transaction(async (trxSession) => {
 });
 ```
 
-### Transacao Com Metadata
+### Transaction Metadata
 
 ```ts
 await session.transaction(
@@ -648,7 +648,7 @@ await session.transaction(
 
 ### Nested Transactions
 
-Nested transaction usa savepoint quando o driver suporta:
+Nested transaction uses savepoints when the driver supports them:
 
 ```ts
 await session.transaction(async (trxSession) => {
@@ -682,9 +682,9 @@ await session.transaction(async (trxSession) => {
 });
 ```
 
-## Plugins Oficiais
+## Official Plugins
 
-Plugins ficam no model:
+Plugins are attached to models:
 
 ```ts
 import {
@@ -722,7 +722,7 @@ const Article = defineModel({
 
 ### soft delete
 
-API relevante:
+Relevant API:
 
 - `query().withSoftDeleted()`
 - `query().onlySoftDeleted()`
@@ -730,13 +730,13 @@ API relevante:
 
 ### tenant scope
 
-Por padrao, o plugin usa:
+By default, the plugin uses:
 
-- coluna: `tenantId`
-- chave do contexto: `tenantId`
-- bypass: `objx.tenantScope.bypass`
+- column: `tenantId`
+- context key: `tenantId`
+- bypass key: `objx.tenantScope.bypass`
 
-Bypass explicito:
+Explicit bypass:
 
 ```ts
 await session.executionContextManager.run(
@@ -751,17 +751,17 @@ await session.executionContextManager.run(
 
 ### audit trail
 
-O plugin recebe `actorId` do contexto e emite entradas de auditoria em `insert`, `update` e `delete` por padrao.
+The plugin reads `actorId` from context and emits audit entries for `insert`, `update`, and `delete` by default.
 
 ## Hydration
 
-Hydration converte valores conforme o schema do model:
+Hydration converts values based on model schema:
 
 - `timestamp` -> `Date`
 - `boolean` -> `boolean`
 - `json<T>` -> `T`
 
-Voce pode habilitar por query:
+Enable per query:
 
 ```ts
 const rows = await session.execute(Project.query(), {
@@ -769,7 +769,7 @@ const rows = await session.execute(Project.query(), {
 });
 ```
 
-Ou como default da sessao:
+Or as session default:
 
 ```ts
 const session = createSqliteSession({
@@ -778,9 +778,9 @@ const session = createSqliteSession({
 });
 ```
 
-## Raw SQL E Escape Hatch
+## Raw SQL And Escape Hatch
 
-OBJX trata SQL bruto como capacidade de primeira classe.
+OBJX treats raw SQL as a first-class capability.
 
 Helpers:
 
@@ -789,7 +789,7 @@ Helpers:
 - `ref`
 - `joinSql`
 
-Exemplo:
+Example:
 
 ```ts
 import { identifier, sql } from '@qbobjx/sql-engine';
@@ -801,7 +801,7 @@ const result = await session.execute(
 console.log(result.rows[0]?.totalProjects);
 ```
 
-Referencias:
+References:
 
 ```ts
 import { ref } from '@qbobjx/sql-engine';
@@ -814,9 +814,9 @@ console.log(compiled.sql);
 console.log(ref('projects.createdAt'));
 ```
 
-## Observabilidade
+## Observability
 
-Voce pode anexar observers na sessao:
+You can attach query observers to a session:
 
 ```ts
 const session = createSqliteSession({
@@ -837,77 +837,77 @@ const session = createSqliteSession({
 });
 ```
 
-## Codegen, Introspection, Migrations E Seeds
+## Codegen, Introspection, Migrations, And Seeds
 
-O pacote `@qbobjx/codegen` cobre:
+`@qbobjx/codegen` includes:
 
-- introspection real de SQLite
-- geracao de models
-- template de starter SQLite
-- template de migrations e seeds
-- runner de migrations
-- runner de seeds
+- real SQLite introspection
+- model generation
+- SQLite starter template
+- migration and seed schema templates
+- migration runner
+- seed runner
 
-### Introspection SQLite
+### SQLite Introspection
 
 ```bash
 npm run build
 npm run codegen -- introspect --dialect sqlite3 --database ./app.sqlite --out ./generated/schema.json
 ```
 
-### Gerar Models
+### Generate Models
 
 ```bash
 npm run codegen -- generate --input ./generated/schema.json --out ./generated/models
 ```
 
-### Gerar Starter SQLite
+### Generate SQLite Starter
 
 ```bash
 npm run codegen -- template --template sqlite-starter --out ./starter --package-name my-objx-app
 ```
 
-### Gerar Schemas De Migration E Seed
+### Generate Migration And Seed Schemas
 
 ```bash
 npm run codegen -- template --template migration-seed-schemas --out ./db
 ```
 
-### Rodar Migrations
+### Run Migrations
 
 ```bash
 npm run codegen -- migrate --dialect sqlite3 --database ./app.sqlite --dir ./db/migrations --direction up
 ```
 
-### Rodar Seeds
+### Run Seeds
 
 ```bash
 npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/seeds --direction run
 ```
 
-## Exemplos Do Repositorio
+## Repository Examples
 
-- `examples/sqlite-introspection`: fluxo de introspection e model gerado
-- `examples/complex-runtime`: contexto, plugins, graph ops, eager nested, transacoes e raw SQL
-- `examples/express-api`: API REST com Express, SQLite, plugins globais na sessao, validacao e CRUD
-- `examples/nestjs-api`: API NestJS com `@qbobjx/nestjs`, migrations, seeds e sessao pronta
-- `examples/benchmarks`: benchmark publico do compilador e runtime
+- `examples/sqlite-introspection`: introspection flow and generated model output
+- `examples/complex-runtime`: context, plugins, graph ops, nested eager loading, transactions, and raw SQL
+- `examples/express-api`: REST API with Express, SQLite, global session plugins, validation, and CRUD
+- `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and prewired session
+- `examples/benchmarks`: public compiler/runtime benchmark suite
 
-## Benchmark Publico
+## Public Benchmark
 
 ```bash
 npm run benchmark
 ```
 
-Referencia:
+Reference:
 
 - `examples/benchmarks/README.md`
 
-## Limites Atuais
+## Current Limits
 
-Limites importantes do estado atual:
+Current important limits:
 
-- runtime oficial cobre SQLite, Postgres e MySQL, com codegen, introspection, migrations e seeds para os tres dialetos atuais
-- o caminho SQLite usa `node:sqlite`
-- os drivers de Postgres e MySQL dependem de pools/clients compativeis com `pg` e `mysql2`
-- adapters oficiais de validacao hoje cobrem `zod`, `ajv` e `valibot`; o proximo foco e endurecimento e benchmarks
+- official runtime currently covers SQLite, Postgres, and MySQL, with codegen, introspection, migrations, and seeds for these three dialects
+- the SQLite path uses `node:sqlite`
+- Postgres and MySQL drivers depend on pools/clients compatible with `pg` and `mysql2`
+- official validation adapters currently cover `zod`, `ajv`, and `valibot`; next focus is hardening and benchmarks
