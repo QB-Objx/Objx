@@ -2,9 +2,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectObjxSession } from '@qbobjx/nestjs';
-import { createSqliteSession } from '@qbobjx/sqlite-driver';
+import { ObjxSessionHost } from '@qbobjx/nestjs';
 import { AuditTrailStore } from './audit-trail.store.js';
+import type { AppObjxSession } from './objx.options.js';
 import { Project, Task } from './models.js';
 
 interface CreateProjectInput {
@@ -31,12 +31,12 @@ type SoftDeleteMode = 'default' | 'include' | 'only';
 @Injectable()
 export class ProjectsService {
   constructor(
-    @InjectObjxSession()
-    private readonly session: ReturnType<typeof createSqliteSession>,
+    private readonly objx: ObjxSessionHost<AppObjxSession>,
     private readonly auditTrailStore: AuditTrailStore,
   ) {}
 
   listProjects(filters: { deleted?: string; status?: string }) {
+    const { session } = this.objx;
     const deleted = this.#normalizeSoftDeleteMode(filters.deleted);
     let query = Project.query()
       .withRelated({
@@ -50,7 +50,7 @@ export class ProjectsService {
       query = query.where(({ status }, op) => op.eq(status, filters.status));
     }
 
-    return this.session.execute(query);
+    return session.execute(query);
   }
 
   async getProject(projectId: number, deleted?: string) {
@@ -64,7 +64,7 @@ export class ProjectsService {
   }
 
   async createProject(input: CreateProjectInput) {
-    const inserted = await this.session.insertGraph(
+    const inserted = await this.objx.session.insertGraph(
       Project,
       {
         name: input.name,
@@ -87,7 +87,7 @@ export class ProjectsService {
   }
 
   async updateProject(projectId: number, input: UpdateProjectInput) {
-    const updated = await this.session.execute(
+    const updated = await this.objx.session.execute(
       Project.update({
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
@@ -113,7 +113,7 @@ export class ProjectsService {
       throw new NotFoundException('Project not found.');
     }
 
-    const inserted = await this.session.execute(
+    const inserted = await this.objx.session.execute(
       Task.insert({
         projectId,
         title: input.title,
@@ -128,7 +128,7 @@ export class ProjectsService {
   }
 
   async completeProject(projectId: number) {
-    const completedProject = await this.session.transaction(async (transactionSession) => {
+    const completedProject = await this.objx.session.transaction(async (transactionSession) => {
       const rows = await transactionSession.execute(
         Project.query()
           .withSoftDeleted()
@@ -171,7 +171,7 @@ export class ProjectsService {
   }
 
   async deleteProject(projectId: number) {
-    const deletedCount = await this.session.execute(
+    const deletedCount = await this.objx.session.execute(
       Project.delete().where(({ id }, op) => op.eq(id, projectId)),
     );
 
@@ -185,6 +185,7 @@ export class ProjectsService {
   }
 
   async #loadProject(projectId: number, deleted: SoftDeleteMode) {
+    const { session } = this.objx;
     let query = Project.query()
       .where(({ id }, op) => op.eq(id, projectId))
       .withRelated({
@@ -193,7 +194,7 @@ export class ProjectsService {
 
     query = this.#applySoftDeleteMode(query, deleted);
 
-    const rows = await this.session.execute(query);
+    const rows = await session.execute(query);
     return rows[0] ?? null;
   }
 

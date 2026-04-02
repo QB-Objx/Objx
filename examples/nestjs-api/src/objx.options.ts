@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createExecutionContextManager } from '@qbobjx/core';
-import type { ObjxModuleResolvedOptions } from '@qbobjx/nestjs';
+import type {
+  InferObjxSession,
+  ObjxModuleResolvedOptions,
+} from '@qbobjx/nestjs';
 import {
   createAuditTrailPlugin,
   createSoftDeletePlugin,
@@ -49,3 +52,5 @@ export function createObjxNestModuleOptions(
     },
   };
 }
+
+export type AppObjxSession = InferObjxSession<typeof createObjxNestModuleOptions>;

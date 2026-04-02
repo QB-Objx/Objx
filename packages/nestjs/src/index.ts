@@ -22,6 +22,15 @@ import { defer, from, mergeMap, type Observable } from 'rxjs';
 
 type MaybePromise<TValue> = TValue | Promise<TValue>;
 
+export type InferObjxSession<TValue> =
+  TValue extends ObjxModuleResolvedOptions<infer TSession>
+    ? TSession
+    : TValue extends PromiseLike<infer TResolved>
+      ? InferObjxSession<TResolved>
+      : TValue extends (...args: readonly unknown[]) => infer TReturn
+        ? InferObjxSession<TReturn>
+        : never;
+
 export interface ObjxSessionLike {
   readonly executionContextManager: ExecutionContextManager;
 }
