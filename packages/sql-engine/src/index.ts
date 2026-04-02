@@ -1,4 +1,5 @@
 import type {
+  AnyColumnDefinition,
   AnyRelationDefinition,
   AnyQueryBuilder,
   AnyModelColumnReference,
@@ -379,6 +380,15 @@ function resolveSoftDeleteDeletedValue(config: SoftDeleteModelConfig): unknown {
   }
 
   return new Date();
+}
+
+function resolveColumnDefaultValue(column: AnyColumnDefinition): unknown {
+  if (!column.hasDefault) {
+    return undefined;
+  }
+
+  const defaultValue = column.defaultValue;
+  return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
 }
 
 export class TransactionNotSupportedError extends ObjxSqlEngineError {
@@ -1121,6 +1131,11 @@ export class ObjxSession<TTransaction = unknown> {
     executionContext?: ExecutionContext,
   ): QueryNode {
     let preparedQuery = queryNode;
+
+    if (preparedQuery.kind === 'insert') {
+      preparedQuery = this.#applyColumnDefaultsToInsertQuery(preparedQuery);
+    }
+
     const softDelete = this.#getSoftDeleteConfig(registration);
 
     if (softDelete) {
@@ -1139,6 +1154,45 @@ export class ObjxSession<TTransaction = unknown> {
     }
 
     return preparedQuery;
+  }
+
+  #applyColumnDefaultsToInsertQuery(queryNode: InsertQueryNode): InsertQueryNode {
+    return {
+      ...queryNode,
+      rows: queryNode.rows.map((row) => this.#applyColumnDefaultsToRow(queryNode.model, row)),
+    };
+  }
+
+  #applyColumnDefaultsToRow(
+    model: AnyModelDefinition,
+    row: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> {
+    let nextRow: Record<string, unknown> | undefined;
+
+    for (const [columnName, definition] of Object.entries(model.columnDefinitions) as [
+      string,
+      AnyColumnDefinition,
+    ][]) {
+      if (row[columnName] !== undefined || !definition.hasDefault) {
+        continue;
+      }
+
+      const resolvedDefault = resolveColumnDefaultValue(definition);
+
+      if (resolvedDefault === undefined) {
+        continue;
+      }
+
+      if (!nextRow) {
+        nextRow = {
+          ...row,
+        };
+      }
+
+      nextRow[columnName] = resolvedDefault;
+    }
+
+    return nextRow ?? row;
   }
 
   #resolveValidationSchema(

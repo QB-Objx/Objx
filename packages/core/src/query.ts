@@ -5,6 +5,7 @@ import type {
   AnyRelationDefinition,
   InferInsertShape,
   InferModelShape,
+  InferUpdateShape,
   ModelColumnReference,
 } from './model.js';
 
@@ -1226,7 +1227,7 @@ export function createInsertQueryBuilder<TModel extends AnyModelDefinition>(
 
 export function createUpdateQueryBuilder<TModel extends AnyModelDefinition>(
   model: TModel,
-  values: InferInsertShape<TModel>,
+  values: InferUpdateShape<TModel>,
 ): UpdateQueryBuilder<TModel, number> {
   return new UpdateQueryBuilder(
     model,

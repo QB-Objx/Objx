@@ -51,10 +51,10 @@ export const Task = defineModel({
   table: 'tasks',
   columns: {
     id: col.int().primary(),
-    projectId: col.int(),
+    projectId: col.int().generated(),
     title: col.text(),
-    status: col.text(),
-    tenantId: col.text(),
+    status: col.text().default('todo'),
+    tenantId: col.text().generated(),
     deletedAt: col.timestamp().nullable(),
   },
   relations: (task) => ({
@@ -82,8 +82,8 @@ export const Project = defineModel({
   columns: {
     id: col.int().primary(),
     name: col.text(),
-    status: col.text(),
-    tenantId: col.text(),
+    status: col.text().default('planned'),
+    tenantId: col.text().generated(),
     deletedAt: col.timestamp().nullable(),
   },
   relations: (project) => ({

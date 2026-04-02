@@ -1586,10 +1586,17 @@ function inferPackageName(outDir: string, fallback = 'objx-sqlite-starter'): str
 function renderColumnBuilder(column: IntrospectedColumn): string {
   const normalizedType = column.type.trim().toLowerCase();
   let builder =
-    normalizedType === 'int' ||
-    normalizedType === 'integer' ||
     normalizedType === 'bigint' ||
-    normalizedType === 'smallint'
+    normalizedType === 'int8' ||
+    normalizedType === 'bigserial' ||
+    normalizedType === 'serial8'
+      ? 'col.bigint()'
+      : normalizedType === 'int' ||
+          normalizedType === 'integer' ||
+          normalizedType === 'smallint' ||
+          normalizedType === 'int4' ||
+          normalizedType === 'serial' ||
+          normalizedType === 'serial4'
       ? 'col.int()'
       : normalizedType === 'text' ||
           normalizedType === 'varchar' ||

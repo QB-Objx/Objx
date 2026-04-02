@@ -181,6 +181,7 @@ console.log(rows);
 Available core column builders:
 
 - `col.int()`
+- `col.bigint()` / `col.bigInt()`
 - `col.text()`
 - `col.boolean()`
 - `col.json<T>()`
@@ -193,6 +194,7 @@ Common helpers:
 - `.primary()`
 - `.nullable()`
 - `.default(value)`
+- `.generated()`
 - `.configure({ ... })`
 
 Example:
@@ -207,11 +209,14 @@ export const Task = defineModel({
     id: col.int().primary(),
     title: col.text(),
     done: col.boolean().default(false),
+    snowflakeId: col.bigInt().default(() => 9007199254740993n),
     metadata: col.json<{ priority: 'low' | 'high' }>().nullable(),
     createdAt: col.timestamp(),
   },
 });
 ```
+
+Use `.generated()` for columns that are filled by the runtime, plugins or graph mutation plumbing, such as tenant ids and relation-owned foreign keys.
 
 ## Relations
 

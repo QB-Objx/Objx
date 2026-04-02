@@ -61,6 +61,36 @@ function coerceNumber(value: unknown): unknown {
   return value;
 }
 
+function coerceBigInt(value: unknown): unknown {
+  if (typeof value === 'bigint') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) {
+      return value;
+    }
+
+    return BigInt(value);
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+
+    if (normalized === '' || !/^-?\d+$/.test(normalized)) {
+      return value;
+    }
+
+    try {
+      return BigInt(normalized);
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+}
+
 function coerceTimestamp(value: unknown): unknown {
   if (value instanceof Date) {
     return value;
@@ -109,6 +139,8 @@ export function hydrateColumnValue(
   switch (definition.kind) {
     case 'int':
       return coerceNumber(value);
+    case 'bigint':
+      return coerceBigInt(value);
     case 'boolean':
       return coerceBoolean(value);
     case 'json':

@@ -1,6 +1,6 @@
 {
   "name": "@qbobjx/mysql-driver",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "files": [
@@ -19,7 +19,7 @@
     }
   },
   "dependencies": {
-    "@qbobjx/sql-engine": "0.1.1"
+    "@qbobjx/sql-engine": "0.1.2"
   },
   "peerDependencies": {
     "mysql2": "^3.0.0"

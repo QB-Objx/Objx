@@ -425,6 +425,63 @@ async function createSchemaDirectory(tempDir) {
 
 const tests = [
   [
+    'generate maps bigint columns to col.bigint()',
+    async () => {
+      const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-codegen-bigint-'));
+      const inputPath = path.join(tempDir, 'schema.json');
+      const outDir = 'generated/models';
+
+      try {
+        await writeFile(
+          inputPath,
+          JSON.stringify(
+            {
+              dialect: 'postgres',
+              tables: [
+                {
+                  name: 'ledger_entries',
+                  columns: [
+                    {
+                      name: 'id',
+                      type: 'bigint',
+                      nullable: false,
+                      primary: true,
+                    },
+                    {
+                      name: 'amount',
+                      type: 'int8',
+                      nullable: false,
+                    },
+                  ],
+                },
+              ],
+            },
+            null,
+            2,
+          ),
+          'utf8',
+        );
+
+        const exitCode = await runCodegenCli(
+          ['generate', '--input', inputPath, '--out', outDir],
+          {
+            cwd: tempDir,
+          },
+        );
+        const contents = await readFile(
+          path.join(tempDir, outDir, 'ledger_entries.model.ts'),
+          'utf8',
+        );
+
+        assert.equal(exitCode, 0);
+        assert.match(contents, /id: col\.bigint\(\)\.primary\(\)/);
+        assert.match(contents, /amount: col\.bigint\(\)/);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    },
+  ],
+  [
     'parseCodegenCliArgs normalizes postgres/mysql dialects and template options',
     async () => {
       const postgresIntrospect = parseCodegenCliArgs([

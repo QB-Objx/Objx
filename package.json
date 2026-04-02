@@ -14,6 +14,8 @@
     "lint": "eslint .",
     "prepare": "node scripts/setup-husky.mjs",
     "publish:ci": "npm run build && npm run release",
+    "publish:local": "node scripts/publish-local.mjs",
+    "publish:local:dry-run": "node scripts/publish-local.mjs --dry-run --skip-published-check",
     "release": "npx @changesets/cli@2.29.7 publish",
     "smoke:packages": "npm run build && node scripts/smoke-install.mjs",
     "typecheck": "tsc -b --pretty",

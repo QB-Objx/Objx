@@ -18,6 +18,7 @@ export const Project = defineModel({
   columns: {
     id: col.int().primary(),
     name: col.text(),
+    tenantId: col.text().generated(),
   },
 });
 ```

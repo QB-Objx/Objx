@@ -93,6 +93,17 @@ class FakeDriver {
           { id: '2', title: 'Archived', deletedAt: '2026-03-30T10:00:00.000Z' },
         ],
       ],
+      [
+        'ledger_entries',
+        [
+          {
+            id: '9007199254740993',
+            amount: '42',
+            note: 'seeded',
+          },
+        ],
+      ],
+      ['snowflake_projects', []],
       ['person_pets', []],
     ]);
     this.sequences = new Map([
@@ -108,6 +119,7 @@ class FakeDriver {
       ['collars', 100],
       ['pet_toys', 201],
       ['articles', 2],
+      ['snowflake_projects', 0],
       ['person_pets', 0],
     ]);
     this.transactionCount = 0;
@@ -1051,7 +1063,87 @@ const Article = defineModel({
   plugins: [createSoftDeletePlugin()],
 });
 
+const LedgerEntry = defineModel({
+  name: 'LedgerEntry',
+  table: 'ledger_entries',
+  columns: {
+    id: col.bigInt().primary(),
+    amount: col.bigInt(),
+    note: col.text(),
+  },
+});
+
+let snowflakeCounter = 9007199254740992n;
+
+function generateSnowflakeId() {
+  snowflakeCounter += 1n;
+  return snowflakeCounter;
+}
+
+const SnowflakeProject = defineModel({
+  name: 'SnowflakeProject',
+  table: 'snowflake_projects',
+  columns: {
+    id: col.bigInt().primary().default(() => generateSnowflakeId()),
+    name: col.text(),
+    tenantId: col.text().generated(),
+    createdAt: col.timestamp().default(() => new Date('2026-04-02T00:00:00.000Z')),
+  },
+  plugins: [createTenantScopePlugin()],
+});
+
 const tests = [
+  [
+    'bigint columns hydrate bigint values from result rows',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+
+      const rows = await session.execute(
+        LedgerEntry.query().where(({ id }, operators) => operators.eq(id, 9007199254740993n)),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, 9007199254740993n);
+      assert.equal(typeof rows[0].id, 'bigint');
+      assert.equal(rows[0].amount, 42n);
+      assert.equal(typeof rows[0].amount, 'bigint');
+    },
+  ],
+  [
+    'insert queries materialize default factories before execution',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+
+      const rows = await session.executionContextManager.run(
+        {
+          values: {
+            tenantId: 'tenant_a',
+          },
+        },
+        () =>
+          session.execute(
+            SnowflakeProject.insert({
+              name: 'Launch',
+            }).returning(({ id, name, tenantId, createdAt }) => [id, name, tenantId, createdAt]),
+          ),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, 9007199254740993n);
+      assert.equal(typeof rows[0].id, 'bigint');
+      assert.equal(rows[0].tenantId, 'tenant_a');
+      assert.ok(rows[0].createdAt instanceof Date);
+      assert.equal(driver.tables.get('snowflake_projects')[0].id, 9007199254740993n);
+    },
+  ],
   [
     'compiler resolves knex-style dialect aliases',
     async () => {

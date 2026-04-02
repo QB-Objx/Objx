@@ -2,6 +2,7 @@ import { deepFreeze } from './utils.js';
 
 export type ColumnKind =
   | 'int'
+  | 'bigint'
   | 'text'
   | 'boolean'
   | 'json'
@@ -9,29 +10,51 @@ export type ColumnKind =
   | 'timestamp'
   | 'custom';
 
-export interface ColumnDefinition<TValue = unknown, TKind extends string = string> {
+type DefaultValueFactory<TValue> = TValue | (() => TValue);
+
+export interface ColumnDefinition<
+  TValue = unknown,
+  TKind extends string = string,
+  TNullable extends boolean = boolean,
+  TPrimary extends boolean = boolean,
+  THasDefault extends boolean = boolean,
+  TGenerated extends boolean = boolean,
+> {
   readonly kind: TKind;
-  readonly nullable: boolean;
-  readonly primary: boolean;
-  readonly hasDefault: boolean;
-  readonly defaultValue?: TValue | (() => TValue);
+  readonly nullable: TNullable;
+  readonly primary: TPrimary;
+  readonly hasDefault: THasDefault;
+  readonly generated: TGenerated;
+  readonly defaultValue?: DefaultValueFactory<TValue>;
   readonly config: Readonly<Record<string, unknown>>;
   readonly __value?: TValue;
 }
 
-interface ColumnBuilderState<TValue, TKind extends string> {
+interface ColumnBuilderState<
+  TValue,
+  TKind extends string,
+  TNullable extends boolean,
+  TPrimary extends boolean,
+  THasDefault extends boolean,
+  TGenerated extends boolean,
+> {
   readonly kind: TKind;
-  readonly nullable: boolean;
-  readonly primary: boolean;
-  readonly hasDefault: boolean;
-  readonly defaultValue?: TValue | (() => TValue);
+  readonly nullable: TNullable;
+  readonly primary: TPrimary;
+  readonly hasDefault: THasDefault;
+  readonly generated: TGenerated;
+  readonly defaultValue?: DefaultValueFactory<TValue>;
   readonly config: Readonly<Record<string, unknown>>;
 }
 
-export type AnyColumnDefinition = ColumnDefinition<any, any>;
+export type AnyColumnDefinition = ColumnDefinition<any, any, any, any, any, any>;
 
 export type InferColumnValue<TColumn extends AnyColumnDefinition> = TColumn extends ColumnDefinition<
   infer TValue,
+  any,
+  any,
+  any,
+  any,
   any
 >
   ? TValue
@@ -41,52 +64,91 @@ export type InferColumnsShape<TColumns extends Record<string, AnyColumnDefinitio
   [TKey in keyof TColumns]: InferColumnValue<TColumns[TKey]>;
 };
 
-export class ColumnBuilder<TValue, TKind extends string> {
-  readonly #state: ColumnBuilderState<TValue, TKind>;
+export class ColumnBuilder<
+  TValue,
+  TKind extends string,
+  TNullable extends boolean = false,
+  TPrimary extends boolean = false,
+  THasDefault extends boolean = false,
+  TGenerated extends boolean = false,
+> {
+  readonly #state: ColumnBuilderState<
+    TValue,
+    TKind,
+    TNullable,
+    TPrimary,
+    THasDefault,
+    TGenerated
+  >;
 
-  constructor(state: ColumnBuilderState<TValue, TKind>) {
+  constructor(
+    state: ColumnBuilderState<
+      TValue,
+      TKind,
+      TNullable,
+      TPrimary,
+      THasDefault,
+      TGenerated
+    >,
+  ) {
     this.#state = state;
   }
 
-  nullable(): ColumnBuilder<TValue | null, TKind> {
-    const nextState: ColumnBuilderState<TValue | null, TKind> =
-      this.#state.defaultValue === undefined
-        ? {
-            kind: this.#state.kind,
-            nullable: true,
-            primary: this.#state.primary,
-            hasDefault: this.#state.hasDefault,
-            config: this.#state.config,
-          }
-        : {
-            kind: this.#state.kind,
-            nullable: true,
-            primary: this.#state.primary,
-            hasDefault: this.#state.hasDefault,
-            config: this.#state.config,
-            defaultValue: this.#state.defaultValue as (TValue | null) | (() => TValue | null),
-          };
+  nullable(): ColumnBuilder<TValue | null, TKind, true, TPrimary, THasDefault, TGenerated> {
+    if (this.#state.defaultValue === undefined) {
+      return new ColumnBuilder<TValue | null, TKind, true, TPrimary, THasDefault, TGenerated>({
+        kind: this.#state.kind,
+        nullable: true,
+        primary: this.#state.primary,
+        hasDefault: this.#state.hasDefault,
+        generated: this.#state.generated,
+        config: this.#state.config,
+      });
+    }
 
-    return new ColumnBuilder<TValue | null, TKind>(nextState);
+    return new ColumnBuilder<TValue | null, TKind, true, TPrimary, THasDefault, TGenerated>({
+      kind: this.#state.kind,
+      nullable: true,
+      primary: this.#state.primary,
+      hasDefault: this.#state.hasDefault,
+      generated: this.#state.generated,
+      config: this.#state.config,
+      defaultValue: this.#state.defaultValue as DefaultValueFactory<TValue | null>,
+    });
   }
 
-  primary(): ColumnBuilder<TValue, TKind> {
-    return new ColumnBuilder<TValue, TKind>({
+  primary(): ColumnBuilder<TValue, TKind, TNullable, true, THasDefault, TGenerated> {
+    return new ColumnBuilder<TValue, TKind, TNullable, true, THasDefault, TGenerated>({
       ...this.#state,
       primary: true,
     });
   }
 
-  default(value: TValue | (() => TValue)): ColumnBuilder<TValue, TKind> {
-    return new ColumnBuilder<TValue, TKind>({
+  default(
+    value: DefaultValueFactory<TValue>,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, true, TGenerated> {
+    return new ColumnBuilder<TValue, TKind, TNullable, TPrimary, true, TGenerated>({
       ...this.#state,
       hasDefault: true,
       defaultValue: value,
     });
   }
 
-  configure(config: Record<string, unknown>): ColumnBuilder<TValue, TKind> {
-    return new ColumnBuilder<TValue, TKind>({
+  generated(): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, true> {
+    return new ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, true>({
+      ...this.#state,
+      generated: true,
+      config: {
+        ...this.#state.config,
+        generated: true,
+      },
+    });
+  }
+
+  configure(
+    config: Record<string, unknown>,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
+    return new ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated>({
       ...this.#state,
       config: {
         ...this.#state.config,
@@ -95,25 +157,40 @@ export class ColumnBuilder<TValue, TKind extends string> {
     });
   }
 
-  build(): ColumnDefinition<TValue, TKind> {
+  build(): ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
     return deepFreeze({
       kind: this.#state.kind,
       nullable: this.#state.nullable,
       primary: this.#state.primary,
       hasDefault: this.#state.hasDefault,
+      generated: this.#state.generated,
       defaultValue: this.#state.defaultValue,
       config: this.#state.config,
-    }) as ColumnDefinition<TValue, TKind>;
+    }) as ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated>;
   }
 }
 
-export type AnyColumnBuilder = ColumnBuilder<any, any>;
+export type AnyColumnBuilder = ColumnBuilder<any, any, any, any, any, any>;
 export type ColumnInput = AnyColumnBuilder | AnyColumnDefinition;
 
-export type ResolveColumnInput<TColumnInput> = TColumnInput extends ColumnBuilder<infer TValue, infer TKind>
-  ? ColumnDefinition<TValue, TKind>
-  : TColumnInput extends ColumnDefinition<infer TValue, infer TKind>
-    ? ColumnDefinition<TValue, TKind>
+export type ResolveColumnInput<TColumnInput> = TColumnInput extends ColumnBuilder<
+  infer TValue,
+  infer TKind,
+  infer TNullable,
+  infer TPrimary,
+  infer THasDefault,
+  infer TGenerated
+>
+  ? ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated>
+  : TColumnInput extends ColumnDefinition<
+        infer TValue,
+        infer TKind,
+        infer TNullable,
+        infer TPrimary,
+        infer THasDefault,
+        infer TGenerated
+      >
+    ? ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated>
     : never;
 
 export type ResolveColumns<TColumns extends Record<string, ColumnInput>> = {
@@ -123,18 +200,21 @@ export type ResolveColumns<TColumns extends Record<string, ColumnInput>> = {
 function createBuilder<TValue, TKind extends string>(
   kind: TKind,
   config: Record<string, unknown> = {},
-): ColumnBuilder<TValue, TKind> {
-  return new ColumnBuilder<TValue, TKind>({
+): ColumnBuilder<TValue, TKind, false, false, false, false> {
+  return new ColumnBuilder<TValue, TKind, false, false, false, false>({
     kind,
     nullable: false,
     primary: false,
     hasDefault: false,
+    generated: false,
     config,
   });
 }
 
 export const col = {
   int: () => createBuilder<number, 'int'>('int'),
+  bigint: () => createBuilder<bigint, 'bigint'>('bigint'),
+  bigInt: () => createBuilder<bigint, 'bigint'>('bigint'),
   text: () => createBuilder<string, 'text'>('text'),
   boolean: () => createBuilder<boolean, 'boolean'>('boolean'),
   json: <TValue = unknown>() => createBuilder<TValue, 'json'>('json'),

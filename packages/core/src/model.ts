@@ -57,6 +57,38 @@ export type ModelColumnsInput = Record<string, ColumnInput>;
 export type ModelColumns = Record<string, AnyColumnDefinition>;
 export type ModelRelations = Record<string, AnyRelationDefinition>;
 type EmptyModelRelations = Record<string, never>;
+type Simplify<TValue> = {
+  [TKey in keyof TValue]: TValue[TKey];
+} & {};
+
+type OptionalColumnKeys<TColumns extends ModelColumns> = Extract<
+  {
+    [TKey in keyof TColumns]: TColumns[TKey] extends ColumnDefinition<
+      any,
+      any,
+      infer TNullable,
+      infer TPrimary,
+      infer THasDefault,
+      infer TGenerated
+    >
+      ? TNullable extends true
+        ? TKey
+        : TPrimary extends true
+          ? TKey
+          : THasDefault extends true
+            ? TKey
+            : TGenerated extends true
+              ? TKey
+              : never
+      : never;
+  }[keyof TColumns],
+  keyof TColumns
+>;
+
+type RequiredColumnKeys<TColumns extends ModelColumns> = Exclude<
+  keyof TColumns,
+  OptionalColumnKeys<TColumns>
+>;
 
 export interface ModelDefinition<
   TColumns extends ModelColumns = ModelColumns,
@@ -74,7 +106,6 @@ export interface ModelDefinition<
   query(): SelectQueryBuilder<ModelDefinition<TColumns, TRelations>, InferColumnsShape<TColumns>>;
   insert(
     values:
-      | InferColumnsShape<TColumns>
       | InferInsertShape<ModelDefinition<TColumns, TRelations>>
       | readonly InferInsertShape<ModelDefinition<TColumns, TRelations>>[],
   ): InsertQueryBuilder<ModelDefinition<TColumns, TRelations>, InferColumnsShape<TColumns>>;
@@ -82,7 +113,7 @@ export interface ModelDefinition<
     values: readonly InferInsertShape<ModelDefinition<TColumns, TRelations>>[],
   ): InsertQueryBuilder<ModelDefinition<TColumns, TRelations>, InferColumnsShape<TColumns>>;
   update(
-    values: InferInsertShape<ModelDefinition<TColumns, TRelations>>,
+    values: InferUpdateShape<ModelDefinition<TColumns, TRelations>>,
   ): UpdateQueryBuilder<ModelDefinition<TColumns, TRelations>, number>;
   delete(): DeleteQueryBuilder<ModelDefinition<TColumns, TRelations>, number>;
 }
@@ -107,7 +138,20 @@ export type InferModelShape<TModel extends AnyModelDefinition> = TModel extends 
   ? InferColumnsShape<TColumns>
   : never;
 
-export type InferInsertShape<TModel extends AnyModelDefinition> = Partial<InferModelShape<TModel>>;
+export type InferInsertShape<TModel extends AnyModelDefinition> = TModel extends ModelDefinition<
+  infer TColumns,
+  any
+>
+  ? Simplify<
+      {
+        [TKey in RequiredColumnKeys<TColumns>]: InferColumnsShape<TColumns>[TKey];
+      } & {
+        [TKey in OptionalColumnKeys<TColumns>]?: InferColumnsShape<TColumns>[TKey];
+      }
+    >
+  : never;
+
+export type InferUpdateShape<TModel extends AnyModelDefinition> = Partial<InferModelShape<TModel>>;
 
 export interface RelationOptions {
   readonly from: AnyModelColumnReference;
@@ -245,7 +289,7 @@ export function defineModel<
       );
     },
     update(
-      values: InferInsertShape<ModelDefinition<ResolveColumns<TColumnsInput>, TRelations>>,
+      values: InferUpdateShape<ModelDefinition<ResolveColumns<TColumnsInput>, TRelations>>,
     ) {
       return createUpdateQueryBuilder(
         modelShell as ModelDefinition<ResolveColumns<TColumnsInput>, TRelations>,
