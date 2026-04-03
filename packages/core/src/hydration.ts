@@ -164,11 +164,21 @@ export function hydrateModelRow<TModel extends AnyModelDefinition>(
     string,
     AnyColumnDefinition,
   ][]) {
-    if (!hasOwnKey(row, columnName)) {
+    const configuredDbName = definition.config.dbName;
+    const sourceColumnName =
+      typeof configuredDbName === 'string' && configuredDbName.trim().length > 0
+        ? configuredDbName
+        : columnName;
+
+    if (!hasOwnKey(row, sourceColumnName)) {
       continue;
     }
 
-    hydrated[columnName] = hydrateColumnValue(definition, row[columnName]);
+    hydrated[columnName] = hydrateColumnValue(definition, row[sourceColumnName]);
+
+    if (preserveUnknownKeys && sourceColumnName !== columnName) {
+      delete hydrated[sourceColumnName];
+    }
   }
 
   return hydrated as InferModelShape<TModel> & Record<string, unknown>;

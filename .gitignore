@@ -4,3 +4,4 @@ dist/
 *.tsbuildinfo
 examples/benchmarks/benchmark.sqlite
 
+.codex

@@ -22,3 +22,23 @@ export const Project = defineModel({
   },
 });
 ```
+
+## Plugin Authoring
+
+`@qbobjx/core` also exports the public plugin contracts used by official and custom plugins.
+
+```ts
+import { definePlugin } from '@qbobjx/core';
+
+export const snakeCasePlugin = definePlugin({
+  name: 'snake-case-naming',
+  hooks: {
+    onModelDefine(context) {
+      context.setColumnDbName('tenantId', 'tenant_id');
+      context.setColumnDbName('createdAt', 'created_at');
+    },
+  },
+});
+```
+
+`onModelDefine` runs during `defineModel(...)` after column inputs are resolved and before the final model metadata is frozen. Use it to inspect `columnDefinitions`, read existing `dbName` mappings with `getColumnDbName(...)`, or apply naming conventions with `setColumnDbName(...)`.

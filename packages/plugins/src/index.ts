@@ -26,6 +26,41 @@ export function createTimestampsPlugin(
   });
 }
 
+export interface SnakeCaseNamingPluginOptions {
+  readonly exclude?: readonly string[];
+  readonly overrides?: Readonly<Record<string, string>>;
+}
+
+function toSnakeCase(value: string): string {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z0-9])/g, '$1_$2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/[-\s]+/g, '_')
+    .toLowerCase();
+}
+
+export function createSnakeCaseNamingPlugin(
+  options: SnakeCaseNamingPluginOptions = {},
+): Readonly<ObjxPlugin> {
+  const excluded = new Set(options.exclude ?? []);
+  const overrides = options.overrides ?? {};
+
+  return definePlugin({
+    name: 'snake-case-naming',
+    hooks: {
+      onModelDefine(context) {
+        for (const columnKey of Object.keys(context.columnDefinitions)) {
+          if (excluded.has(columnKey)) {
+            continue;
+          }
+
+          context.setColumnDbName(columnKey, overrides[columnKey] ?? toSnakeCase(columnKey));
+        }
+      },
+    },
+  });
+}
+
 export const SOFT_DELETE_METADATA_KEY = 'softDelete';
 
 export interface SoftDeletePluginMetadata {

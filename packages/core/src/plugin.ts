@@ -1,4 +1,5 @@
 import type { ExecutionContext } from './execution-context.js';
+import type { AnyColumnDefinition } from './columns.js';
 import type { AnyModelDefinition } from './model.js';
 import type { QueryNode } from './query.js';
 import { deepFreeze } from './utils.js';
@@ -28,7 +29,16 @@ export interface ErrorPluginContext extends QueryPluginContext {
   readonly error: unknown;
 }
 
+export interface ModelDefinePluginContext {
+  readonly modelName: string;
+  readonly table: string;
+  readonly columnDefinitions: Readonly<Record<string, AnyColumnDefinition>>;
+  setColumnDbName(columnKey: string, dbName: string): void;
+  getColumnDbName(columnKey: string): string | undefined;
+}
+
 export interface ObjxPluginHooks {
+  onModelDefine?(context: ModelDefinePluginContext): void;
   onModelRegister?(context: ModelPluginContext): void;
   onQueryCreate?(context: QueryPluginContext): void;
   onQueryBuild?(context: QueryPluginContext): void;
