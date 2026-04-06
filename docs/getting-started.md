@@ -106,7 +106,7 @@ npm run benchmark
 
 Reference:
 
-- `benchmarks/real/README.md`
+- `benchmarks/README.md`
 
 ## 8. Migration And Seed Schemas
 

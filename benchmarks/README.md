@@ -31,6 +31,20 @@ npm run benchmark:setup
 npm run benchmark:quick
 ```
 
+Importante:
+
+- o benchmark usa a CLI local do `Prisma` instalada em `benchmarks/node_modules`
+- se voce atualizou dependencias ou vinha de uma instalacao quebrada, rode `npm run benchmark:install` de novo antes do setup
+
+Reset completo recomendado quando o ambiente esta inconsistente:
+
+```bash
+npm run benchmark:reinstall
+npm run benchmark:db:up
+npm run benchmark:setup
+npm run benchmark:quick
+```
+
 Benchmark completo:
 
 ```bash

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -29,12 +30,28 @@ function resolveSchemas(argv) {
   throw new Error(`Unknown prisma generate mode "${mode}". Use "postgres", "mysql", or "all".`);
 }
 
+function resolveLocalPrismaEntrypoint() {
+  return path.join(rootDir, 'node_modules', 'prisma', 'build', 'index.js');
+}
+
+async function assertLocalPrismaInstalled(entrypoint) {
+  try {
+    await access(entrypoint);
+  } catch (error) {
+    throw new Error(
+      'Local Prisma CLI was not found. Run "npm install" inside benchmarks or "npm run benchmark:install" at the repo root first.',
+      {
+        cause: error,
+      },
+    );
+  }
+}
+
 async function runCommand(command, args) {
   await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: rootDir,
       stdio: 'inherit',
-      shell: process.platform === 'win32',
       env: process.env,
     });
 
@@ -53,9 +70,12 @@ async function runCommand(command, args) {
 async function main() {
   applyDefaultDatabaseEnvironment(DEFAULTS);
   const schemas = resolveSchemas(process.argv.slice(2));
+  const prismaEntrypoint = resolveLocalPrismaEntrypoint();
+
+  await assertLocalPrismaInstalled(prismaEntrypoint);
 
   for (const schema of schemas) {
-    await runCommand('npx', ['prisma', 'generate', '--schema', schema]);
+    await runCommand(process.execPath, [prismaEntrypoint, 'generate', '--schema', schema]);
   }
 }
 

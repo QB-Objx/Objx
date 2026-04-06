@@ -2,7 +2,7 @@ import {
   col,
   defineModel,
   hasMany,
-} from '../../../../packages/core/dist/index.js';
+} from '../../../packages/core/dist/index.js';
 
 export const Pet = defineModel({
   name: 'Pet',

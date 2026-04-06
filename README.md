@@ -955,7 +955,7 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 - `examples/express-api`: REST API with Express, SQLite, snake_case physical columns, validation, and CRUD
 - `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and snake_case physical columns
 - `examples/benchmarks`: compiler/runtime microbenchmark suite
-- `benchmarks/real`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, and `Knex`
+- `benchmarks`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, and `Knex`
 
 ## Real Benchmark
 
@@ -968,7 +968,7 @@ npm run benchmark
 
 Reference:
 
-- `benchmarks/real/README.md`
+- `benchmarks/README.md`
 
 ## Microbenchmark
 

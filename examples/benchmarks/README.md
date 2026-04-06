@@ -4,7 +4,7 @@ This benchmark suite focuses on microbenchmarks for OBJX runtime and SQL compila
 
 For the official real-database comparison against `Prisma`, `Sequelize`, and `Knex`, use:
 
-- `benchmarks/real`
+- `benchmarks`
 - `npm run benchmark`
 
 ## What It Measures

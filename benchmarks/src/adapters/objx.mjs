@@ -3,15 +3,15 @@ import mysql from 'mysql2/promise';
 import {
   identifier,
   sql,
-} from '../../../../packages/sql-engine/dist/index.js';
+} from '../../../packages/sql-engine/dist/index.js';
 import {
   createPostgresDriver,
   createPostgresSession,
-} from '../../../../packages/postgres-driver/dist/index.js';
+} from '../../../packages/postgres-driver/dist/index.js';
 import {
   createMySqlDriver,
   createMySqlSession,
-} from '../../../../packages/mysql-driver/dist/index.js';
+} from '../../../packages/mysql-driver/dist/index.js';
 import { Person } from '../models/objx.mjs';
 
 function createMySqlConnectionOptions(connectionString) {
