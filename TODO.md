@@ -221,27 +221,27 @@ Conclusao:
 
 ### 11.3 Tipos De Coluna Avancados
 
-- [ ] `decimal` / `numeric`
-- [ ] `float`
-- [ ] `double`
-- [ ] `date`
-- [ ] `time`
-- [ ] `jsonb` explicito para Postgres
-- [ ] enums tipados
-- [ ] arrays tipados para Postgres
-- [ ] custom codecs por coluna
+- [x] `decimal` / `numeric`
+- [x] `float`
+- [x] `double`
+- [x] `date`
+- [x] `time`
+- [x] `jsonb` explicito para Postgres
+- [x] enums tipados
+- [x] arrays tipados para Postgres
+- [x] custom codecs por coluna
 
 ## Fase 12: Query Builder De Elite
 
 ### 12.1 SQL Expressiveness
 
-- [ ] `groupBy`
-- [ ] `having`
-- [ ] `distinct`
-- [ ] aggregates tipados
+- [x] `groupBy`
+- [x] `having`
+- [x] `distinct`
+- [x] aggregates tipados
 - [ ] `exists` / `notExists`
-- [ ] subqueries tipadas
-- [ ] CTE / `with`
+- [x] subqueries tipadas
+- [x] CTE / `with`
 - [ ] `union` / `unionAll`
 - [ ] `case when`
 

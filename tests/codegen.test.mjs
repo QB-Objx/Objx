@@ -524,6 +524,72 @@ const tests = [
     },
   ],
   [
+    'generate maps advanced column types to dedicated builders',
+    async () => {
+      const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-codegen-advanced-'));
+      const inputPath = path.join(tempDir, 'schema.json');
+      const outDir = 'generated/models';
+
+      try {
+        await writeFile(
+          inputPath,
+          JSON.stringify(
+            {
+              dialect: 'postgres',
+              tables: [
+                {
+                  name: 'advanced_metrics',
+                  columns: [
+                    { name: 'id', type: 'integer', nullable: false, primary: true },
+                    { name: 'amount', type: 'numeric', nullable: false },
+                    { name: 'ratio', type: 'real', nullable: false },
+                    { name: 'score', type: 'double precision', nullable: false },
+                    { name: 'payload', type: 'jsonb', nullable: false },
+                    { name: 'event_date', type: 'date', nullable: false },
+                    { name: 'event_time', type: 'time', nullable: false },
+                    {
+                      name: 'status',
+                      type: 'status',
+                      nullable: false,
+                      enumValues: ['draft', 'published'],
+                    },
+                    { name: 'tags', type: '_text', nullable: false },
+                  ],
+                },
+              ],
+            },
+            null,
+            2,
+          ),
+          'utf8',
+        );
+
+        const exitCode = await runCodegenCli(
+          ['generate', '--input', inputPath, '--out', outDir],
+          {
+            cwd: tempDir,
+          },
+        );
+        const contents = await readFile(
+          path.join(tempDir, outDir, 'advanced_metrics.model.ts'),
+          'utf8',
+        );
+
+        assert.equal(exitCode, 0);
+        assert.match(contents, /amount: col\.numeric\(\)/);
+        assert.match(contents, /ratio: col\.float\(\)/);
+        assert.match(contents, /score: col\.double\(\)/);
+        assert.match(contents, /payload: col\.jsonb\(\)/);
+        assert.match(contents, /eventDate: col\.date\(\)\.dbName\('event_date'\)/);
+        assert.match(contents, /eventTime: col\.time\(\)\.dbName\('event_time'\)/);
+        assert.match(contents, /status: col\.enum\(\['draft', 'published'\]\)/);
+        assert.match(contents, /tags: col\.array\(col\.text\(\)\)/);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    },
+  ],
+  [
     'parseCodegenCliArgs normalizes postgres/mysql dialects and template options',
     async () => {
       const postgresIntrospect = parseCodegenCliArgs([

@@ -31,7 +31,32 @@ export interface ValueExpressionNode {
   readonly value: unknown;
 }
 
-export type ExpressionNode = ColumnExpressionNode | ValueExpressionNode;
+export type AggregateFunction = 'count' | 'sum' | 'avg' | 'min' | 'max';
+
+export interface AggregateExpressionNode<TValue = unknown> {
+  readonly kind: 'aggregate';
+  readonly fn: AggregateFunction;
+  readonly expression?: ExpressionNode;
+  readonly distinct?: boolean;
+  readonly __value?: TValue;
+}
+
+export interface SubqueryExpressionNode<TValue = unknown> {
+  readonly kind: 'subquery';
+  readonly query: SelectQueryNode<any>;
+  readonly __value?: TValue;
+}
+
+export type ExpressionNode =
+  | ColumnExpressionNode
+  | ValueExpressionNode
+  | AggregateExpressionNode
+  | SubqueryExpressionNode;
+
+export type SelectExpressionNode =
+  | ColumnExpressionNode
+  | AggregateExpressionNode
+  | SubqueryExpressionNode;
 
 export type PredicateOperator =
   | '='
@@ -64,10 +89,10 @@ export interface LogicalPredicateNode {
 export type PredicateNode = ComparisonPredicateNode | LogicalPredicateNode;
 
 export interface SelectionNode<
-  TColumn extends AnyModelColumnReference = AnyModelColumnReference,
+  TExpression extends SelectExpressionNode = SelectExpressionNode,
 > {
   readonly kind: 'selection';
-  readonly column: TColumn;
+  readonly expression: TExpression;
   readonly alias?: string;
 }
 
@@ -100,7 +125,11 @@ export type SoftDeleteQueryMode = 'default' | 'include' | 'only';
 export interface SelectQueryNode<TModel extends AnyModelDefinition = AnyModelDefinition> {
   readonly kind: 'select';
   readonly model: TModel;
+  readonly ctes: readonly CommonTableExpressionNode[];
+  readonly distinct?: boolean;
   readonly selections: readonly SelectionNode[];
+  readonly groupBy: readonly ExpressionNode[];
+  readonly having: readonly PredicateNode[];
   readonly joins: readonly JoinNode[];
   readonly eagerRelations: readonly string[];
   readonly softDeleteMode?: SoftDeleteQueryMode;
@@ -108,6 +137,12 @@ export interface SelectQueryNode<TModel extends AnyModelDefinition = AnyModelDef
   readonly orderBy: readonly OrderByNode[];
   readonly limit?: number;
   readonly offset?: number;
+}
+
+export interface CommonTableExpressionNode {
+  readonly kind: 'cte';
+  readonly name: string;
+  readonly query: SelectQueryNode<any>;
 }
 
 export interface InsertQueryNode<TModel extends AnyModelDefinition = AnyModelDefinition> {
@@ -141,6 +176,19 @@ type Simplify<TValue> = {
 
 export type InferColumnReferenceValue<TColumn extends AnyModelColumnReference> =
   TColumn extends ModelColumnReference<any, any, infer TValue> ? TValue : never;
+
+export type InferExpressionValue<TExpression> =
+  TExpression extends ModelColumnReference<any, any, infer TValue>
+    ? TValue
+    : TExpression extends ColumnExpressionNode<infer TColumn>
+      ? InferColumnReferenceValue<TColumn>
+      : TExpression extends ValueExpressionNode
+        ? TExpression['value']
+        : TExpression extends AggregateExpressionNode<infer TValue>
+          ? TValue
+          : TExpression extends SubqueryExpressionNode<infer TValue>
+            ? TValue
+            : never;
 
 export type InferSelectionShape<TSelection extends readonly AnyModelColumnReference[]> = Simplify<{
   [TRef in TSelection[number] as TRef['key']]: TRef extends ModelColumnReference<any, any, infer TValue>
@@ -188,6 +236,23 @@ function isColumnReference(value: unknown): value is AnyModelColumnReference {
   );
 }
 
+function isAggregateExpression(value: unknown): value is AggregateExpressionNode {
+  return typeof value === 'object' && value !== null && 'kind' in value && (value as { kind?: string }).kind === 'aggregate';
+}
+
+function isSubqueryExpression(value: unknown): value is SubqueryExpressionNode {
+  return typeof value === 'object' && value !== null && 'kind' in value && (value as { kind?: string }).kind === 'subquery';
+}
+
+function isExpressionNode(value: unknown): value is ExpressionNode {
+  return isColumnReference(value) || isAggregateExpression(value) || isSubqueryExpression(value) || (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    (value as { kind?: string }).kind === 'value'
+  );
+}
+
 export function columnExpression<TColumn extends AnyModelColumnReference>(
   column: TColumn,
 ): ColumnExpressionNode<TColumn> {
@@ -202,6 +267,14 @@ export function valueExpression(value: unknown): ExpressionNode {
     return columnExpression(value);
   }
 
+  if (isAggregateExpression(value) || isSubqueryExpression(value)) {
+    return value;
+  }
+
+  if (isExpressionNode(value)) {
+    return value;
+  }
+
   return {
     kind: 'value',
     value,
@@ -210,7 +283,7 @@ export function valueExpression(value: unknown): ExpressionNode {
 
 function createPredicate(
   operator: PredicateOperator,
-  left: AnyModelColumnReference,
+  left: AnyModelColumnReference | ExpressionNode,
   right?: unknown,
 ): ComparisonPredicateNode {
   const predicate: {
@@ -221,7 +294,7 @@ function createPredicate(
   } = {
     kind: 'predicate',
     operator,
-    left: columnExpression(left),
+    left: valueExpression(left),
   };
 
   if (Array.isArray(right)) {
@@ -249,44 +322,44 @@ function createLogicalPredicate(
 }
 
 export interface FilterOperators {
-  eq<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  eq(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  ne<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  ne(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  gt<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  gt(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  gte<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  gte(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  lt<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  lt(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  lte<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: InferColumnReferenceValue<TColumn> | AnyModelColumnReference,
+  lte(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: unknown,
   ): PredicateNode;
-  like<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
+  like(
+    left: AnyModelColumnReference | ExpressionNode,
     right: string,
   ): PredicateNode;
-  ilike<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
+  ilike(
+    left: AnyModelColumnReference | ExpressionNode,
     right: string,
   ): PredicateNode;
-  in<TColumn extends AnyModelColumnReference>(
-    left: TColumn,
-    right: readonly (InferColumnReferenceValue<TColumn> | AnyModelColumnReference)[],
+  in(
+    left: AnyModelColumnReference | ExpressionNode,
+    right: readonly unknown[],
   ): PredicateNode;
-  isNull<TColumn extends AnyModelColumnReference>(left: TColumn): PredicateNode;
-  isNotNull<TColumn extends AnyModelColumnReference>(left: TColumn): PredicateNode;
+  isNull(left: AnyModelColumnReference | ExpressionNode): PredicateNode;
+  isNotNull(left: AnyModelColumnReference | ExpressionNode): PredicateNode;
   and(...predicates: readonly PredicateNode[]): PredicateNode;
   or(...predicates: readonly PredicateNode[]): PredicateNode;
 }
@@ -333,14 +406,14 @@ export const op: FilterOperators = deepFreeze({
   },
 }) as FilterOperators;
 
-function createSelection(column: AnyModelColumnReference, alias?: string): SelectionNode {
+function createSelection(expression: SelectExpressionNode, alias?: string): SelectionNode {
   const selection: {
     kind: 'selection';
-    column: AnyModelColumnReference;
+    expression: SelectExpressionNode;
     alias?: string;
   } = {
     kind: 'selection',
-    column,
+    expression,
   };
 
   if (alias) {
@@ -349,6 +422,77 @@ function createSelection(column: AnyModelColumnReference, alias?: string): Selec
 
   return deepFreeze(selection) as SelectionNode;
 }
+
+function createAggregateExpression<TValue = unknown>(
+  fn: AggregateFunction,
+  expression?: unknown,
+  distinct = false,
+): AggregateExpressionNode<TValue> {
+  const aggregate: {
+    kind: 'aggregate';
+    fn: AggregateFunction;
+    expression?: ExpressionNode;
+    distinct?: boolean;
+  } = {
+    kind: 'aggregate',
+    fn,
+  };
+
+  if (expression !== undefined) {
+    aggregate.expression = valueExpression(expression);
+  }
+
+  if (distinct) {
+    aggregate.distinct = true;
+  }
+
+  return deepFreeze(aggregate) as AggregateExpressionNode<TValue>;
+}
+
+function createSubqueryExpression<TValue = unknown>(
+  query: SelectQueryBuilder<any, any> | SelectQueryNode<any>,
+): SubqueryExpressionNode<TValue> {
+  return deepFreeze({
+    kind: 'subquery',
+    query: query instanceof SelectQueryBuilder ? query.toAst() : query,
+  }) as SubqueryExpressionNode<TValue>;
+}
+
+export interface SqlExpressionFactory {
+  count<TValue = number>(expression?: unknown): AggregateExpressionNode<TValue>;
+  countDistinct<TValue = number>(expression: unknown): AggregateExpressionNode<TValue>;
+  sum<TValue = number>(expression: unknown): AggregateExpressionNode<TValue>;
+  avg<TValue = number>(expression: unknown): AggregateExpressionNode<TValue>;
+  min<TValue = unknown>(expression: unknown): AggregateExpressionNode<TValue>;
+  max<TValue = unknown>(expression: unknown): AggregateExpressionNode<TValue>;
+  subquery<TValue = unknown>(
+    query: SelectQueryBuilder<any, any> | SelectQueryNode<any>,
+  ): SubqueryExpressionNode<TValue>;
+}
+
+export const expr: SqlExpressionFactory = deepFreeze({
+  count(expression) {
+    return createAggregateExpression('count', expression);
+  },
+  countDistinct(expression) {
+    return createAggregateExpression('count', expression, true);
+  },
+  sum(expression) {
+    return createAggregateExpression('sum', expression);
+  },
+  avg(expression) {
+    return createAggregateExpression('avg', expression);
+  },
+  min(expression) {
+    return createAggregateExpression('min', expression);
+  },
+  max(expression) {
+    return createAggregateExpression('max', expression);
+  },
+  subquery(query) {
+    return createSubqueryExpression(query);
+  },
+}) as SqlExpressionFactory;
 
 function createJoinCondition(
   left: AnyModelColumnReference,
@@ -669,7 +813,11 @@ function cloneSelectNode<TModel extends AnyModelDefinition>(
   const node: {
     kind: 'select';
     model: TModel;
+    ctes: readonly CommonTableExpressionNode[];
+    distinct?: boolean;
     selections: readonly SelectionNode[];
+    groupBy: readonly ExpressionNode[];
+    having: readonly PredicateNode[];
     joins: readonly JoinNode[];
     eagerRelations: readonly string[];
     softDeleteMode?: SoftDeleteQueryMode;
@@ -680,16 +828,24 @@ function cloneSelectNode<TModel extends AnyModelDefinition>(
   } = {
     kind: 'select',
     model,
+    ctes: next.ctes ?? current.ctes,
     selections: next.selections ?? current.selections,
+    groupBy: next.groupBy ?? current.groupBy,
+    having: next.having ?? current.having,
     joins: next.joins ?? current.joins,
     eagerRelations: next.eagerRelations ?? current.eagerRelations,
     predicates: next.predicates ?? current.predicates,
     orderBy: next.orderBy ?? current.orderBy,
   };
 
+  const distinct = next.distinct ?? current.distinct;
   const softDeleteMode = next.softDeleteMode ?? current.softDeleteMode;
   const limit = next.limit ?? current.limit;
   const offset = next.offset ?? current.offset;
+
+  if (distinct !== undefined) {
+    node.distinct = distinct;
+  }
 
   if (softDeleteMode !== undefined) {
     node.softDeleteMode = softDeleteMode;
@@ -795,7 +951,11 @@ export class SelectQueryBuilder<
       deepFreeze({
         kind: 'select',
         model,
+        ctes: [],
+        distinct: false,
         selections: [],
+        groupBy: [],
+        having: [],
         joins: [],
         eagerRelations: [],
         softDeleteMode: 'default',
@@ -807,7 +967,9 @@ export class SelectQueryBuilder<
   select<TSelection extends readonly AnyModelColumnReference[]>(
     selector: (columns: TModel['columns']) => TSelection,
   ): SelectQueryBuilder<TModel, InferSelectionShape<TSelection>> {
-    const selections = selector(this.#model.columns).map((column) => createSelection(column));
+    const selections = selector(this.#model.columns).map((column) =>
+      createSelection(columnExpression(column)),
+    );
 
     return new SelectQueryBuilder<TModel, InferSelectionShape<TSelection>>(
       this.#model,
@@ -825,7 +987,7 @@ export class SelectQueryBuilder<
     Simplify<Omit<TResult, TColumn['key']> & Record<TAlias, InferColumnReferenceValue<TColumn>>>
   > {
     const column = selector(this.#model.columns);
-    const selections = [...this.#node.selections, createSelection(column, alias)];
+    const selections = [...this.#node.selections, createSelection(columnExpression(column), alias)];
 
     return new SelectQueryBuilder(
       this.#model,
@@ -836,6 +998,101 @@ export class SelectQueryBuilder<
       TModel,
       Simplify<Omit<TResult, TColumn['key']> & Record<TAlias, InferColumnReferenceValue<TColumn>>>
     >;
+  }
+
+  selectExpr<
+    TAlias extends string,
+    TExpression extends SelectExpressionNode,
+  >(
+    alias: TAlias,
+    selector: (columns: TModel['columns'], expressions: SqlExpressionFactory) => TExpression,
+  ): SelectQueryBuilder<
+    TModel,
+    Simplify<TResult & Record<TAlias, InferExpressionValue<TExpression>>>
+  > {
+    const expression = selector(this.#model.columns, expr);
+    const selections = [...this.#node.selections, createSelection(expression, alias)];
+
+    return new SelectQueryBuilder(
+      this.#model,
+      cloneSelectNode(this.#model, this.#node, {
+        selections: deepFreeze(selections),
+      }),
+    ) as SelectQueryBuilder<
+      TModel,
+      Simplify<TResult & Record<TAlias, InferExpressionValue<TExpression>>>
+    >;
+  }
+
+  distinct(): SelectQueryBuilder<TModel, TResult> {
+    return new SelectQueryBuilder<TModel, TResult>(
+      this.#model,
+      cloneSelectNode(this.#model, this.#node, {
+        distinct: true,
+      }),
+    );
+  }
+
+  groupBy<TSelection extends readonly AnyModelColumnReference[]>(
+    selector: (columns: TModel['columns']) => TSelection,
+  ): SelectQueryBuilder<TModel, TResult> {
+    const expressions = selector(this.#model.columns).map((column) => columnExpression(column));
+
+    return new SelectQueryBuilder<TModel, TResult>(
+      this.#model,
+      cloneSelectNode(this.#model, this.#node, {
+        groupBy: deepFreeze([...this.#node.groupBy, ...expressions]),
+      }),
+    );
+  }
+
+  having(
+    predicateOrFactory:
+      | PredicateNode
+      | ((
+          columns: TModel['columns'],
+          operators: FilterOperators,
+          expressions: SqlExpressionFactory,
+        ) => PredicateNode),
+  ): SelectQueryBuilder<TModel, TResult> {
+    const predicate =
+      typeof predicateOrFactory === 'function'
+        ? predicateOrFactory(this.#model.columns, op, expr)
+        : predicateOrFactory;
+
+    return new SelectQueryBuilder<TModel, TResult>(
+      this.#model,
+      cloneSelectNode(this.#model, this.#node, {
+        having: deepFreeze([...this.#node.having, predicate]),
+      }),
+    );
+  }
+
+  withCte(
+    name: string,
+    query: SelectQueryBuilder<any, any> | SelectQueryNode<any>,
+  ): SelectQueryBuilder<TModel, TResult> {
+    const normalized = name.trim();
+
+    if (!normalized) {
+      throw new Error('CTE name cannot be empty.');
+    }
+
+    const cteQuery = query instanceof SelectQueryBuilder ? query.toAst() : query;
+
+    return new SelectQueryBuilder<TModel, TResult>(
+      this.#model,
+      cloneSelectNode(this.#model, this.#node, {
+        ctes: deepFreeze([
+          ...this.#node.ctes,
+          deepFreeze({
+            kind: 'cte',
+            name: normalized,
+            query: cteQuery,
+          }) as CommonTableExpressionNode,
+        ]),
+      }),
+    );
   }
 
   join(
@@ -1028,7 +1285,9 @@ export class InsertQueryBuilder<
   returning<TSelection extends readonly AnyModelColumnReference[]>(
     selector: (columns: TModel['columns']) => TSelection,
   ): InsertQueryBuilder<TModel, InferSelectionShape<TSelection>> {
-    const returning = selector(this.#model.columns).map((column) => createSelection(column));
+    const returning = selector(this.#model.columns).map((column) =>
+      createSelection(columnExpression(column)),
+    );
 
     return new InsertQueryBuilder<TModel, InferSelectionShape<TSelection>>(
       this.#model,
@@ -1076,7 +1335,9 @@ export class UpdateQueryBuilder<
   returning<TSelection extends readonly AnyModelColumnReference[]>(
     selector: (columns: TModel['columns']) => TSelection,
   ): UpdateQueryBuilder<TModel, readonly InferSelectionShape<TSelection>[]> {
-    const returning = selector(this.#model.columns).map((column) => createSelection(column));
+    const returning = selector(this.#model.columns).map((column) =>
+      createSelection(columnExpression(column)),
+    );
 
     return new UpdateQueryBuilder<TModel, readonly InferSelectionShape<TSelection>[]>(
       this.#model,
@@ -1142,7 +1403,9 @@ export class DeleteQueryBuilder<
   returning<TSelection extends readonly AnyModelColumnReference[]>(
     selector: (columns: TModel['columns']) => TSelection,
   ): DeleteQueryBuilder<TModel, readonly InferSelectionShape<TSelection>[]> {
-    const returning = selector(this.#model.columns).map((column) => createSelection(column));
+    const returning = selector(this.#model.columns).map((column) =>
+      createSelection(columnExpression(column)),
+    );
 
     return new DeleteQueryBuilder<TModel, readonly InferSelectionShape<TSelection>[]>(
       this.#model,

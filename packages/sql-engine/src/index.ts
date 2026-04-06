@@ -9,6 +9,7 @@ import type {
   DeleteQueryNode,
   ExecutionContextManager,
   ExecutionContext,
+  ExpressionNode,
   GraphInsertInput,
   GraphInsertResult,
   HydrationOptions,
@@ -798,7 +799,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
         return [
           'select',
           this.#resolveModelTableName(queryNode.model),
+          queryNode.ctes.map((cte) => this.#cteCacheKey(cte)).join(','),
+          queryNode.distinct ? 'distinct' : 'all',
           queryNode.selections.map((selection) => this.#selectionCacheKey(selection)).join(','),
+          queryNode.groupBy.map((expression) => this.#expressionCacheKey(expression)).join(','),
+          queryNode.having.map((predicate) => this.#predicateCacheKey(predicate)).join(','),
           queryNode.joins.map((join) => this.#joinCacheKey(join)).join(','),
           queryNode.predicates.map((predicate) => this.#predicateCacheKey(predicate)).join(','),
           queryNode.orderBy
@@ -850,7 +855,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #selectionCacheKey(selection: SelectionNode): string {
-    return `${this.#columnCacheKey(selection.column)}:${selection.alias ?? ''}`;
+    return `${this.#expressionCacheKey(selection.expression)}:${selection.alias ?? ''}`;
+  }
+
+  #cteCacheKey(cte: { name: string; query: SelectQueryNode<any> }): string {
+    return `${cte.name}:${this.#buildQueryCacheKey(cte.query)}`;
   }
 
   #joinCacheKey(join: JoinNode): string {
@@ -882,9 +891,17 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
     )}`;
   }
 
-  #expressionCacheKey(expression: ColumnExpressionNode | ValueExpressionNode): string {
+  #expressionCacheKey(expression: ExpressionNode): string {
     if (expression.kind === 'column') {
       return this.#columnCacheKey(expression.column);
+    }
+
+    if (expression.kind === 'aggregate') {
+      return `aggregate:${expression.fn}:${expression.distinct ? 'distinct' : 'all'}:${expression.expression ? this.#expressionCacheKey(expression.expression) : '*'}`;
+    }
+
+    if (expression.kind === 'subquery') {
+      return `subquery:${this.#buildQueryCacheKey(expression.query)}`;
     }
 
     return 'value';
@@ -919,7 +936,23 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       case 'select': {
         const parameters: SqlParameter[] = [];
 
+        for (const cte of queryNode.ctes) {
+          parameters.push(...this.#collectQueryParameters(cte.query));
+        }
+
+        for (const selection of queryNode.selections) {
+          this.#collectExpressionParameters(selection.expression, parameters);
+        }
+
+        for (const expression of queryNode.groupBy) {
+          this.#collectExpressionParameters(expression, parameters);
+        }
+
         for (const predicate of queryNode.predicates) {
+          this.#collectPredicateParameters(predicate, parameters);
+        }
+
+        for (const predicate of queryNode.having) {
           this.#collectPredicateParameters(predicate, parameters);
         }
 
@@ -950,7 +983,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
             }
 
             parameters.push({
-              value: row[columnName],
+              value: this.#serializeColumnParameterValue(
+                queryNode.model,
+                columnName,
+                row[columnName],
+              ),
               typeHint: columnName,
             });
           }
@@ -963,7 +1000,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
 
         for (const columnName of this.#orderedUpdateColumns(queryNode)) {
           parameters.push({
-            value: queryNode.values[columnName],
+            value: this.#serializeColumnParameterValue(
+              queryNode.model,
+              columnName,
+              queryNode.values[columnName],
+            ),
             typeHint: columnName,
           });
         }
@@ -998,6 +1039,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       return;
     }
 
+    const leftColumn = predicate.left.kind === 'column' ? predicate.left.column : undefined;
     this.#collectExpressionParameters(predicate.left, parameters);
 
     if (predicate.operator === 'is null' || predicate.operator === 'is not null') {
@@ -1008,7 +1050,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       const values = Array.isArray(predicate.right) ? predicate.right : [];
 
       for (const value of values) {
-        this.#collectExpressionParameters(value, parameters);
+        this.#collectExpressionParameters(value, parameters, leftColumn);
       }
 
       return;
@@ -1018,20 +1060,37 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       this.#collectExpressionParameters(
         predicate.right as ColumnExpressionNode | ValueExpressionNode,
         parameters,
+        leftColumn,
       );
     }
   }
 
   #collectExpressionParameters(
-    expression: ColumnExpressionNode | ValueExpressionNode,
+    expression: ExpressionNode,
     parameters: SqlParameter[],
+    column?: AnyModelColumnReference,
   ): void {
-    if (expression.kind !== 'value') {
+    if (expression.kind === 'column') {
+      return;
+    }
+
+    if (expression.kind === 'aggregate') {
+      if (expression.expression) {
+        this.#collectExpressionParameters(expression.expression, parameters);
+      }
+
+      return;
+    }
+
+    if (expression.kind === 'subquery') {
+      parameters.push(...this.#collectQueryParameters(expression.query));
       return;
     }
 
     parameters.push({
-      value: expression.value,
+      value: column
+        ? this.#serializeColumnReferenceValue(column, expression.value)
+        : expression.value,
     });
   }
 
@@ -1075,7 +1134,56 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
     );
   }
 
+  #serializeColumnParameterValue(
+    model: AnyModelDefinition,
+    columnKey: string,
+    value: unknown,
+  ): unknown {
+    const definition = (model.columnDefinitions as Record<string, AnyColumnDefinition>)[columnKey];
+
+    if (!definition) {
+      return value;
+    }
+
+    const serializer = definition.config.serialize;
+
+    if (typeof serializer !== 'function') {
+      return value;
+    }
+
+    return (
+      serializer as (
+        input: unknown,
+        column: AnyColumnDefinition,
+      ) => unknown
+    )(value, definition);
+  }
+
+  #serializeColumnReferenceValue(
+    column: AnyModelColumnReference,
+    value: unknown,
+  ): unknown {
+    const serializer = column.definition.config.serialize;
+
+    if (typeof serializer !== 'function') {
+      return value;
+    }
+
+    return (
+      serializer as (
+        input: unknown,
+        column: AnyColumnDefinition,
+      ) => unknown
+    )(value, column.definition);
+  }
+
   #compileSelect(ast: SelectQueryNode, context: CompilationContext): string {
+    const withClause =
+      ast.ctes.length > 0
+        ? `with ${ast.ctes
+            .map((cte) => `${this.#quote(cte.name, context)} as (${this.#compileSelect(cte.query, context)})`)
+            .join(', ')} `
+        : '';
     const selections =
       ast.selections.length > 0
         ? ast.selections.map((selection) => this.#compileSelection(selection, context)).join(', ')
@@ -1089,7 +1197,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
             })
             .join(', ');
 
-    let sql = `select ${selections} from ${this.#quote(this.#resolveModelTableName(ast.model), context)}`;
+    let sql = `${withClause}select ${ast.distinct ? 'distinct ' : ''}${selections} from ${this.#quote(this.#resolveModelTableName(ast.model), context)}`;
 
     if (ast.joins.length > 0) {
       sql += ` ${ast.joins.map((join) => this.#compileJoin(join, context)).join(' ')}`;
@@ -1097,6 +1205,18 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
 
     if (ast.predicates.length > 0) {
       sql += ` where ${ast.predicates
+        .map((predicate) => this.#compilePredicate(predicate, context))
+        .join(' and ')}`;
+    }
+
+    if (ast.groupBy.length > 0) {
+      sql += ` group by ${ast.groupBy
+        .map((expression) => this.#compileExpression(expression, context))
+        .join(', ')}`;
+    }
+
+    if (ast.having.length > 0) {
+      sql += ` having ${ast.having
         .map((predicate) => this.#compilePredicate(predicate, context))
         .join(' and ')}`;
     }
@@ -1135,7 +1255,10 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
             return 'default';
           }
 
-          return context.pushParameter(row[columnName], columnName);
+          return context.pushParameter(
+            this.#serializeColumnParameterValue(ast.model, columnName, row[columnName]),
+            columnName,
+          );
         });
 
         return `(${valuesSql.join(', ')})`;
@@ -1162,7 +1285,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
 
     const assignmentsSql = orderedColumns
       .map((columnName) => {
-        const value = ast.values[columnName];
+        const value = this.#serializeColumnParameterValue(
+          ast.model,
+          columnName,
+          ast.values[columnName],
+        );
         const dbColumnName = this.#resolveModelColumnName(ast.model, columnName);
         return `${this.#quote(dbColumnName, context)} = ${context.pushParameter(value, columnName)}`;
       })
@@ -1238,7 +1365,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileSelection(selection: SelectionNode, context: CompilationContext): string {
-    const base = this.#compileColumn(selection.column, context);
+    const base = this.#compileExpression(selection.expression, context);
     const alias = selection.alias ?? this.#resolveSelectionAlias(selection);
 
     if (!alias) {
@@ -1272,6 +1399,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
     }
 
     const left = this.#compileExpression(predicate.left, context);
+    const leftColumn = predicate.left.kind === 'column' ? predicate.left.column : undefined;
 
     if (predicate.operator === 'is null' || predicate.operator === 'is not null') {
       return `${left} ${predicate.operator}`;
@@ -1285,7 +1413,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       }
 
       return `${left} in (${values
-        .map((value) => this.#compileExpression(value, context))
+        .map((value) => this.#compileExpression(value, context, leftColumn))
         .join(', ')})`;
     }
 
@@ -1295,18 +1423,37 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
 
     const right = predicate.right as ColumnExpressionNode | ValueExpressionNode;
 
-    return `${left} ${predicate.operator} ${this.#compileExpression(right, context)}`;
+    return `${left} ${predicate.operator} ${this.#compileExpression(
+      right,
+      context,
+      leftColumn,
+    )}`;
   }
 
   #compileExpression(
-    expression: ColumnExpressionNode | ValueExpressionNode,
+    expression: ExpressionNode,
     context: CompilationContext,
+    column?: AnyModelColumnReference,
   ): string {
     if (expression.kind === 'column') {
       return this.#compileColumn(expression.column, context);
     }
 
-    return context.pushParameter(expression.value);
+    if (expression.kind === 'aggregate') {
+      const target = expression.expression
+        ? this.#compileExpression(expression.expression, context)
+        : '*';
+      const distinct = expression.distinct ? 'distinct ' : '';
+      return `${expression.fn}(${distinct}${target})`;
+    }
+
+    if (expression.kind === 'subquery') {
+      return `(${this.#compileSelect(expression.query, context)})`;
+    }
+
+    return context.pushParameter(
+      column ? this.#serializeColumnReferenceValue(column, expression.value) : expression.value,
+    );
   }
 
   #compileColumn(column: AnyModelColumnReference, context: CompilationContext): string {
@@ -1322,8 +1469,12 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       return selection.alias;
     }
 
-    return this.#resolveColumnReferenceName(selection.column) !== selection.column.key
-      ? selection.column.key
+    if (selection.expression.kind !== 'column') {
+      return undefined;
+    }
+
+    return this.#resolveColumnReferenceName(selection.expression.column) !== selection.expression.column.key
+      ? selection.expression.column.key
       : undefined;
   }
 

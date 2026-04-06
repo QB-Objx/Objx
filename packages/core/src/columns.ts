@@ -3,11 +3,20 @@ import { deepFreeze } from './utils.js';
 export type ColumnKind =
   | 'int'
   | 'bigint'
+  | 'decimal'
+  | 'numeric'
+  | 'float'
+  | 'double'
   | 'text'
   | 'boolean'
   | 'json'
+  | 'jsonb'
   | 'uuid'
   | 'timestamp'
+  | 'date'
+  | 'time'
+  | 'enum'
+  | 'array'
   | 'custom';
 
 type DefaultValueFactory<TValue> = TValue | (() => TValue);
@@ -171,6 +180,36 @@ export class ColumnBuilder<
     });
   }
 
+  hydrate(
+    transform: (value: unknown, column: ColumnDefinition<TValue, TKind>) => TValue,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
+    return this.configure({
+      hydrate: transform,
+    });
+  }
+
+  serialize(
+    transform: (value: TValue, column: ColumnDefinition<TValue, TKind>) => unknown,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
+    return this.configure({
+      serialize: transform,
+    });
+  }
+
+  nativeType(
+    value: string,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
+    const normalized = value.trim();
+
+    if (!normalized) {
+      throw new Error('Column native type cannot be empty.');
+    }
+
+    return this.configure({
+      nativeType: normalized,
+    });
+  }
+
   build(): ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
     return deepFreeze({
       kind: this.#state.kind,
@@ -211,6 +250,8 @@ export type ResolveColumns<TColumns extends Record<string, ColumnInput>> = {
   [TKey in keyof TColumns]: ResolveColumnInput<TColumns[TKey]>;
 };
 
+type EnumValues<TValue extends string> = readonly [TValue, ...TValue[]];
+
 function createBuilder<TValue, TKind extends string>(
   kind: TKind,
   config: Record<string, unknown> = {},
@@ -229,11 +270,29 @@ export const col = {
   int: () => createBuilder<number, 'int'>('int'),
   bigint: () => createBuilder<bigint, 'bigint'>('bigint'),
   bigInt: () => createBuilder<bigint, 'bigint'>('bigint'),
+  decimal: () => createBuilder<string, 'decimal'>('decimal'),
+  numeric: () => createBuilder<string, 'numeric'>('numeric'),
+  float: () => createBuilder<number, 'float'>('float'),
+  double: () => createBuilder<number, 'double'>('double'),
   text: () => createBuilder<string, 'text'>('text'),
   boolean: () => createBuilder<boolean, 'boolean'>('boolean'),
   json: <TValue = unknown>() => createBuilder<TValue, 'json'>('json'),
+  jsonb: <TValue = unknown>() => createBuilder<TValue, 'jsonb'>('jsonb'),
   uuid: () => createBuilder<string, 'uuid'>('uuid'),
   timestamp: () => createBuilder<Date, 'timestamp'>('timestamp'),
+  date: () => createBuilder<Date, 'date'>('date'),
+  time: () => createBuilder<string, 'time'>('time'),
+  enum: <TValue extends string>(values: EnumValues<TValue>) =>
+    createBuilder<TValue, 'enum'>('enum', {
+      enumValues: [...values],
+    }),
+  array: <TColumnInput extends ColumnInput>(item: TColumnInput) =>
+    createBuilder<readonly InferColumnValue<ResolveColumnInput<TColumnInput>>[], 'array'>(
+      'array',
+      {
+        element: resolveColumnInput(item),
+      },
+    ),
   custom: <TValue, TKind extends string>(kind: TKind, config: Record<string, unknown> = {}) =>
     createBuilder<TValue, TKind>(kind, config),
 } as const;

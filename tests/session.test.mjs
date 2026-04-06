@@ -7,6 +7,7 @@ import {
   belongsToOne,
   col,
   defineModel,
+  expr,
   hasMany,
   hasOne,
   manyToMany,
@@ -103,6 +104,32 @@ class FakeDriver {
             id: '9007199254740993',
             amount: '42',
             note: 'seeded',
+          },
+        ],
+      ],
+      [
+        'advanced_metrics',
+        [
+          {
+            id: '1',
+            amount: '12.34',
+            ratio: '1.25',
+            score: '9.5',
+            event_date: '2026-04-06',
+            event_time: '10:30:45.123',
+            metadata: '{"ok":true,"count":2}',
+            status: 'draft',
+            tags: ['orm', 'sql'],
+          },
+        ],
+      ],
+      [
+        'codec_records',
+        [
+          {
+            id: '1',
+            balance: 1234,
+            status: 'DRAFT',
           },
         ],
       ],
@@ -1195,6 +1222,38 @@ const LedgerEntry = defineModel({
   },
 });
 
+const AdvancedMetric = defineModel({
+  name: 'AdvancedMetric',
+  table: 'advanced_metrics',
+  columns: {
+    id: col.int().primary(),
+    amount: col.numeric(),
+    ratio: col.float(),
+    score: col.double(),
+    eventDate: col.date().dbName('event_date'),
+    eventTime: col.time().dbName('event_time'),
+    metadata: col.jsonb(),
+    status: col.enum(['draft', 'published']),
+    tags: col.array(col.text()),
+  },
+});
+
+const CodecRecord = defineModel({
+  name: 'CodecRecord',
+  table: 'codec_records',
+  columns: {
+    id: col.int().primary(),
+    balance: col
+      .int()
+      .serialize((value) => Math.round(Number(value) * 100))
+      .hydrate((value) => Number(value) / 100),
+    status: col
+      .text()
+      .serialize((value) => String(value).toUpperCase())
+      .hydrate((value) => String(value).toLowerCase()),
+  },
+});
+
 let snowflakeCounter = 9007199254740992n;
 
 function generateSnowflakeId() {
@@ -1374,6 +1433,65 @@ const tests = [
       assert.equal(rows[0].tenantId, 'tenant_a');
       assert.ok(rows[0].createdAt instanceof Date);
       assert.equal(driver.tables.get('snowflake_projects')[0].id, 9007199254740993n);
+    },
+  ],
+  [
+    'advanced column kinds hydrate numeric, date, time, jsonb, enum and arrays consistently',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+
+      const rows = await session.execute(
+        AdvancedMetric.query().where(({ id }, operators) => operators.eq(id, 1)).limit(1),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].amount, '12.34');
+      assert.equal(rows[0].ratio, 1.25);
+      assert.equal(rows[0].score, 9.5);
+      assert.ok(rows[0].eventDate instanceof Date);
+      assert.equal(rows[0].eventDate.toISOString(), '2026-04-06T00:00:00.000Z');
+      assert.equal(rows[0].eventTime, '10:30:45.123');
+      assert.deepEqual(rows[0].metadata, { ok: true, count: 2 });
+      assert.equal(rows[0].status, 'draft');
+      assert.deepEqual(rows[0].tags, ['orm', 'sql']);
+    },
+  ],
+  [
+    'column codecs serialize writes and hydrate reads consistently',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+
+      const existing = await session.execute(
+        CodecRecord.query().where(({ id }, operators) => operators.eq(id, 1)).limit(1),
+      );
+
+      assert.equal(existing[0].balance, 12.34);
+      assert.equal(existing[0].status, 'draft');
+
+      const inserted = await session.execute(
+        CodecRecord.insert({
+          id: 2,
+          balance: 9.99,
+          status: 'published',
+        }).returning(({ id, balance, status }) => [id, balance, status]),
+      );
+
+      assert.equal(inserted.length, 1);
+      assert.equal(inserted[0].balance, 9.99);
+      assert.equal(inserted[0].status, 'published');
+      assert.deepEqual(driver.tables.get('codec_records')[1], {
+        id: 2,
+        balance: 999,
+        status: 'PUBLISHED',
+      });
     },
   ],
   [
@@ -1609,6 +1727,98 @@ const tests = [
         compiled.parameters.map((parameter) => parameter.value),
         [1, 'Ada', true],
       );
+    },
+  ],
+  [
+    'compiler supports distinct, groupBy and having with aggregate expressions',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        Person.query()
+          .distinct()
+          .select(({ active }) => [active])
+          .selectExpr('total', ({ id }, expressions) => expressions.count(id))
+          .groupBy(({ active }) => [active])
+          .having(({ id }, operators, expressions) => operators.gt(expressions.count(id), 0)),
+      );
+
+      assert.match(compiled.sql, /^select distinct /i);
+      assert.match(compiled.sql, /count\("people"\."id"\) as "total"/i);
+      assert.match(compiled.sql, /group by "people"\."active"/i);
+      assert.match(compiled.sql, /having count\("people"\."id"\) > \$1/i);
+      assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), [0]);
+    },
+  ],
+  [
+    'compiler supports scalar subqueries in selections',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        Person.query()
+          .select(({ id, name }) => [id, name])
+          .selectExpr('petCount', ({ id }, expressions) =>
+            expressions.subquery(
+              Pet.query()
+                .selectExpr('count', ({ id: petId }, innerExpressions) => innerExpressions.count(petId))
+                .where(({ ownerId }, operators) => operators.eq(ownerId, id)),
+            ),
+          ),
+      );
+
+      assert.match(
+        compiled.sql,
+        /\(select count\("pets"\."id"\) as "count" from "pets" where "pets"\."ownerId" = "people"\."id"\) as "petCount"/i,
+      );
+      assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), []);
+    },
+  ],
+  [
+    'compiler supports scalar subqueries in predicates',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        Person.query().where(({ id }, operators) =>
+          operators.eq(
+            id,
+            expr.subquery(
+              Pet.query()
+                .selectExpr('minOwnerId', ({ ownerId }, expressions) => expressions.min(ownerId))
+                .limit(1),
+            ),
+          ),
+        ),
+      );
+
+      assert.match(
+        compiled.sql,
+        /where "people"\."id" = \(select min\("pets"\."ownerId"\) as "minOwnerId" from "pets" limit \$1\)/i,
+      );
+      assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), [1]);
+    },
+  ],
+  [
+    'compiler supports common table expressions on select queries',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        Person.query()
+          .withCte(
+            'people',
+            Person.query().where(({ active }, operators) => operators.eq(active, true)),
+          )
+          .select(({ id, name }) => [id, name]),
+      );
+
+      assert.match(compiled.sql, /^with "people" as \(select /i);
+      assert.match(
+        compiled.sql,
+        /\) select "people"\."id", "people"\."name" from "people"$/i,
+      );
+      assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), [true]);
     },
   ],
   [

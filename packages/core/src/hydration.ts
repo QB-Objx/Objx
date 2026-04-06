@@ -85,6 +85,18 @@ function coerceNumber(value: unknown): unknown {
   return value;
 }
 
+function coerceDecimal(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'bigint') {
+    return String(value);
+  }
+
+  return value;
+}
+
 function coerceBigInt(value: unknown): unknown {
   if (typeof value === 'bigint') {
     return value;
@@ -115,6 +127,31 @@ function coerceBigInt(value: unknown): unknown {
   return value;
 }
 
+function coerceDate(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      const parsed = new Date(`${normalized}T00:00:00.000Z`);
+      return Number.isNaN(parsed.getTime()) ? value : parsed;
+    }
+
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? value : parsed;
+  }
+
+  if (typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed;
+  }
+
+  return value;
+}
+
 function coerceTimestamp(value: unknown): unknown {
   if (value instanceof Date) {
     return value;
@@ -123,6 +160,18 @@ function coerceTimestamp(value: unknown): unknown {
   if (typeof value === 'string' || typeof value === 'number') {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? value : parsed;
+  }
+
+  return value;
+}
+
+function coerceTime(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(11, 23);
   }
 
   return value;
@@ -146,6 +195,84 @@ function coerceJson(value: unknown): unknown {
   }
 }
 
+function parseSimplePostgresArray(value: string): unknown[] | undefined {
+  const normalized = value.trim();
+
+  if (!normalized.startsWith('{') || !normalized.endsWith('}')) {
+    return undefined;
+  }
+
+  const result: unknown[] = [];
+  let current = '';
+  let inQuotes = false;
+  let escaped = false;
+
+  for (let index = 1; index < normalized.length - 1; index += 1) {
+    const character = normalized[index]!;
+
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (character === ',' && !inQuotes) {
+      result.push(current === 'NULL' ? null : current);
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.length > 0 || normalized.length > 2) {
+    result.push(current === 'NULL' ? null : current);
+  }
+
+  return result;
+}
+
+function coerceArray(
+  value: unknown,
+  definition: AnyColumnDefinition,
+): unknown {
+  const elementDefinition = definition.config.element as AnyColumnDefinition | undefined;
+  const arrayValue =
+    Array.isArray(value)
+      ? value
+      : typeof value === 'string'
+        ? Array.isArray(coerceJson(value))
+          ? (coerceJson(value) as unknown[])
+          : parseSimplePostgresArray(value)
+        : undefined;
+
+  if (!arrayValue) {
+    return value;
+  }
+
+  if (!elementDefinition) {
+    return arrayValue;
+  }
+
+  const hydrated = new Array(arrayValue.length);
+
+  for (let index = 0; index < arrayValue.length; index += 1) {
+    hydrated[index] = hydrateColumnValue(elementDefinition, arrayValue[index]);
+  }
+
+  return hydrated;
+}
+
 export function hydrateColumnValue(
   definition: AnyColumnDefinition,
   value: unknown,
@@ -163,14 +290,29 @@ export function hydrateColumnValue(
   switch (definition.kind) {
     case 'int':
       return coerceNumber(value);
+    case 'decimal':
+    case 'numeric':
+      return coerceDecimal(value);
     case 'bigint':
       return coerceBigInt(value);
+    case 'float':
+    case 'double':
+      return coerceNumber(value);
     case 'boolean':
       return coerceBoolean(value);
     case 'json':
+    case 'jsonb':
       return coerceJson(value);
     case 'timestamp':
       return coerceTimestamp(value);
+    case 'date':
+      return coerceDate(value);
+    case 'time':
+      return coerceTime(value);
+    case 'enum':
+      return typeof value === 'string' ? value : String(value);
+    case 'array':
+      return coerceArray(value, definition);
     default:
       return value;
   }

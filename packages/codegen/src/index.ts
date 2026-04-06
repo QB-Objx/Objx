@@ -13,6 +13,7 @@ export interface IntrospectedColumn {
   readonly nullable: boolean;
   readonly primary?: boolean;
   readonly defaultValue?: string;
+  readonly enumValues?: readonly string[];
 }
 
 export interface IntrospectedTable {
@@ -1612,6 +1613,104 @@ function needsPhysicalNameMapping(logicalName: string, physicalName: string): bo
   return logicalName !== physicalName;
 }
 
+function parseEnumTypeValues(type: string): readonly string[] | undefined {
+  const match = /^enum\((.*)\)$/i.exec(type.trim());
+
+  if (!match) {
+    return undefined;
+  }
+
+  const source = match[1]!;
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let escaped = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]!;
+
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (character === "'") {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (character === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.length > 0) {
+    values.push(current);
+  }
+
+  return values.length > 0 ? values : undefined;
+}
+
+function postgresArrayElementType(normalizedType: string): string | undefined {
+  if (normalizedType.endsWith('[]')) {
+    return normalizedType.slice(0, -2);
+  }
+
+  if (!normalizedType.startsWith('_')) {
+    return undefined;
+  }
+
+  switch (normalizedType) {
+    case '_int2':
+    case '_int4':
+      return 'integer';
+    case '_int8':
+      return 'bigint';
+    case '_float4':
+      return 'real';
+    case '_float8':
+      return 'double precision';
+    case '_numeric':
+      return 'numeric';
+    case '_bool':
+      return 'boolean';
+    case '_text':
+    case '_varchar':
+    case '_bpchar':
+      return 'text';
+    case '_json':
+      return 'json';
+    case '_jsonb':
+      return 'jsonb';
+    case '_uuid':
+      return 'uuid';
+    case '_date':
+      return 'date';
+    case '_time':
+    case '_timetz':
+      return 'time';
+    case '_timestamp':
+    case '_timestamptz':
+      return 'timestamp';
+    default:
+      return normalizedType.slice(1);
+  }
+}
+
+function renderEnumBuilder(values: readonly string[]): string {
+  return `col.enum([${values.map((value) => `'${escapeSingleQuotedString(value)}'`).join(', ')}])`;
+}
+
 const TEMPLATE_PACKAGE_VERSION = '0.2.0';
 
 function inferPackageName(outDir: string, fallback = 'objx-sqlite-starter'): string {
@@ -1620,8 +1719,25 @@ function inferPackageName(outDir: string, fallback = 'objx-sqlite-starter'): str
   return base && base !== '.' ? base : fallback;
 }
 
-function renderColumnBuilder(column: IntrospectedColumn): string {
+function renderColumnBuilderBase(column: IntrospectedColumn): string {
   const normalizedType = column.type.trim().toLowerCase();
+  const arrayElementType = postgresArrayElementType(normalizedType);
+
+  if (arrayElementType) {
+    return `col.array(${renderColumnBuilderBase({
+      ...column,
+      type: arrayElementType,
+      nullable: false,
+      primary: false,
+    })})`;
+  }
+
+  const enumValues = column.enumValues ?? parseEnumTypeValues(column.type);
+
+  if (enumValues && enumValues.length > 0) {
+    return renderEnumBuilder(enumValues);
+  }
+
   const isBigInt =
     normalizedType === 'bigint' ||
     normalizedType === 'int8' ||
@@ -1637,6 +1753,19 @@ function renderColumnBuilder(column: IntrospectedColumn): string {
     normalizedType.startsWith('int(') ||
     normalizedType.startsWith('integer(') ||
     normalizedType.startsWith('smallint(');
+  const isDecimal =
+    normalizedType === 'decimal' ||
+    normalizedType === 'numeric' ||
+    normalizedType.startsWith('decimal(') ||
+    normalizedType.startsWith('numeric(');
+  const isFloat =
+    normalizedType === 'real' ||
+    normalizedType === 'float' ||
+    normalizedType === 'float4';
+  const isDouble =
+    normalizedType === 'double precision' ||
+    normalizedType === 'double' ||
+    normalizedType === 'float8';
   const isText =
     normalizedType === 'text' ||
     normalizedType === 'varchar' ||
@@ -1652,25 +1781,48 @@ function renderColumnBuilder(column: IntrospectedColumn): string {
     normalizedType === 'timestamp with time zone' ||
     normalizedType === 'timestamp without time zone' ||
     normalizedType === 'datetime' ||
-    normalizedType === 'date' ||
     normalizedType.startsWith('timestamp(') ||
     normalizedType.startsWith('datetime(');
-  let builder =
-    isBigInt
-      ? 'col.bigint()'
-      : isInteger
+  const isDate = normalizedType === 'date';
+  const isTime =
+    normalizedType === 'time' ||
+    normalizedType === 'timetz' ||
+    normalizedType === 'time with time zone' ||
+    normalizedType === 'time without time zone' ||
+    normalizedType.startsWith('time(');
+  return isBigInt
+    ? 'col.bigint()'
+    : isInteger
       ? 'col.int()'
-      : isText
-        ? 'col.text()'
-      : normalizedType === 'boolean' || normalizedType === 'bool'
-          ? 'col.boolean()'
-          : normalizedType === 'json' || normalizedType === 'jsonb'
-            ? 'col.json()'
-            : normalizedType === 'uuid'
-              ? 'col.uuid()'
-              : isTimestamp
-                ? 'col.timestamp()'
-                : `col.custom<unknown>(${JSON.stringify(column.type)})`;
+      : isDecimal
+        ? normalizedType.startsWith('decimal')
+          ? 'col.decimal()'
+          : 'col.numeric()'
+        : isFloat
+          ? 'col.float()'
+          : isDouble
+            ? 'col.double()'
+            : isText
+              ? 'col.text()'
+              : normalizedType === 'boolean' || normalizedType === 'bool'
+                ? 'col.boolean()'
+                : normalizedType === 'json'
+                  ? 'col.json()'
+                  : normalizedType === 'jsonb'
+                    ? 'col.jsonb()'
+                    : normalizedType === 'uuid'
+                      ? 'col.uuid()'
+                      : isTimestamp
+                        ? 'col.timestamp()'
+                        : isDate
+                          ? 'col.date()'
+                          : isTime
+                            ? 'col.time()'
+                            : `col.custom<unknown>(${JSON.stringify(column.type)})`;
+}
+
+function renderColumnBuilder(column: IntrospectedColumn): string {
+  let builder = renderColumnBuilderBase(column);
 
   if (column.nullable) {
     builder += '.nullable()';
@@ -1885,7 +2037,30 @@ export async function introspectPostgresDatabase(
       order by columns.table_name, columns.ordinal_position`,
       [schemaName],
     );
+    const enumResult = await runtime.query(
+      `select
+         types.typname as "typeName",
+         enums.enumlabel as "enumLabel"
+       from pg_type as types
+       inner join pg_enum as enums
+          on enums.enumtypid = types.oid
+       inner join pg_namespace as namespaces
+          on namespaces.oid = types.typnamespace
+      where namespaces.nspname = $1
+      order by types.typname, enums.enumsortorder`,
+      [schemaName],
+    );
     const columnsByTable = new Map<string, IntrospectedColumn[]>();
+    const enumValuesByType = new Map<string, string[]>();
+
+    for (const row of enumResult.rows) {
+      const typeName = asString(row.typeName, 'PostgreSQL enum row.typeName');
+      const enumLabel = asString(row.enumLabel, `PostgreSQL enum ${typeName}.enumLabel`);
+      const values = enumValuesByType.get(typeName) ?? [];
+
+      values.push(enumLabel);
+      enumValuesByType.set(typeName, values);
+    }
 
     for (const row of columnResult.rows) {
       const tableName = asString(row.tableName, 'PostgreSQL column row.tableName');
@@ -1907,6 +2082,7 @@ export async function introspectPostgresDatabase(
         nullable: boolean;
         primary: boolean;
         defaultValue?: string;
+        enumValues?: readonly string[];
       } = {
         name: asString(row.name, `PostgreSQL column ${tableName}.name`),
         type: resolvedType,
@@ -1916,6 +2092,16 @@ export async function introspectPostgresDatabase(
 
       if (typeof row.defaultValue === 'string') {
         column.defaultValue = row.defaultValue;
+      }
+
+      const normalizedType = resolvedType.trim().toLowerCase();
+      const enumTypeName = normalizedType.startsWith('_')
+        ? normalizedType.slice(1)
+        : normalizedType;
+      const enumValues = enumValuesByType.get(enumTypeName);
+
+      if (enumValues) {
+        column.enumValues = enumValues;
       }
 
       columns.push(column);
@@ -2002,6 +2188,7 @@ export async function introspectMySqlDatabase(
         nullable: boolean;
         primary: boolean;
         defaultValue?: string;
+        enumValues?: readonly string[];
       } = {
         name: asString(row.name, `MySQL column ${tableName}.name`),
         type: asString(row.columnType, `MySQL column ${tableName}.columnType`),
@@ -2011,6 +2198,12 @@ export async function introspectMySqlDatabase(
 
       if (typeof row.defaultValue === 'string') {
         column.defaultValue = row.defaultValue;
+      }
+
+      const enumValues = parseEnumTypeValues(column.type);
+
+      if (enumValues) {
+        column.enumValues = enumValues;
       }
 
       columns.push(column);
