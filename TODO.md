@@ -53,12 +53,18 @@ Conclusao:
 
 ## Proximo Passo Imediato
 
-- [ ] naming strategy real: mapear nome logico para nome fisico de coluna/tabela
-- [ ] fast path de resultado para Postgres no driver oficial
-- [ ] fast path de eager loading simples (`belongsToOne`, `hasMany`)
-- [ ] fast path de transacao para Postgres
-- [ ] fixtures reutilizaveis para suites multi-dialeto
-- [ ] relatorio comparativo de benchmark versionado dentro do repo
+- [x] fast path extra quando eager loading cai em `limit 1`
+- [x] fast path de resultado para Postgres no driver oficial
+- [x] fast path de eager loading simples (`belongsToOne`, `hasMany`)
+- [x] fast path de transacao para Postgres
+- [x] fixtures reutilizaveis para suites multi-dialeto
+- [x] relatorio comparativo de benchmark versionado dentro do repo
+- [x] benchmark dedicado de `begin/commit/rollback`
+- [x] naming strategy integrada ao codegen e templates
+- [x] comparar `OBJX` vs `knex` vs `prisma` no benchmark transacional dedicado
+- [x] medir compile vs execute com benchmark separado
+- [x] naming strategy global por sessao
+- [x] adicionar `drizzle` e `typeorm` ao benchmark oficial
 
 ## Fase 0: Fundacao
 
@@ -163,52 +169,53 @@ Conclusao:
 
 ### 10.1 Driver Fast Paths
 
-- [ ] `PostgresResultNormalizer` nativo no `@qbobjx/postgres-driver`
-- [ ] `MySqlResultNormalizer` nativo no `@qbobjx/mysql-driver`
-- [ ] reduzir alocacao de objetos no hot path de `execute`
-- [ ] evitar normalizacao generica quando o driver ja retorna envelope conhecido
-- [ ] fast path para `rowCount` e `rows` sem clonagem desnecessaria
+- [x] `PostgresResultNormalizer` nativo no `@qbobjx/postgres-driver`
+- [x] `MySqlResultNormalizer` nativo no `@qbobjx/mysql-driver`
+- [x] usar `execute()`/prepared statements quando disponivel no driver MySQL
+- [x] reduzir alocacao de objetos no hot path de `execute`
+- [x] evitar normalizacao generica quando o driver ja retorna envelope conhecido
+- [x] fast path para `rowCount` e `rows` sem clonagem desnecessaria
 
 ### 10.2 Eager Loading
 
-- [ ] fast path de eager loading para uma unica relacao `hasMany`
-- [ ] fast path de eager loading para `belongsToOne`
-- [ ] reduzir `Map`/`Set` temporarios na montagem de relacoes
-- [ ] evitar trabalho extra quando o resultado vem com `limit 1`
-- [ ] benchmark dedicado de eager loading por cardinalidade
+- [x] fast path de eager loading para uma unica relacao `hasMany`
+- [x] fast path de eager loading para `belongsToOne`
+- [x] reduzir `Map`/`Set` temporarios na montagem de relacoes
+- [x] evitar trabalho extra quando o resultado vem com `limit 1`
+- [x] benchmark dedicado de eager loading por cardinalidade
 
 ### 10.3 Transacoes
 
-- [ ] reduzir overhead do caminho `session.transaction(...)`
-- [ ] revisar custo de `ExecutionContext` por transacao
-- [ ] minimizar custo de nested transactions/savepoints
-- [ ] benchmark separado de `begin/commit/rollback`
-- [ ] comparar `OBJX` vs `knex` vs `prisma` em transacao read-write simples
+- [x] reduzir overhead do caminho `session.transaction(...)`
+- [x] revisar custo de `ExecutionContext` por transacao
+- [x] minimizar custo de nested transactions/savepoints
+- [x] benchmark separado de `begin/commit/rollback`
+- [x] comparar `OBJX` vs `knex` vs `prisma` em benchmark transacional dedicado
 
 ### 10.4 Compilacao E Cache
 
-- [ ] cache de query plan/compile para builders repetidos
-- [ ] medir custo de compile vs execute em cenarios reais
-- [ ] estudar cache por assinatura de AST
+- [x] cache de query plan/compile para builders repetidos
+- [x] medir custo de compile vs execute em cenarios reais
+- [x] estudar cache por assinatura de AST
 - [ ] garantir invalidacao segura em presence de raw SQL e plugins
 
 ## Fase 11: Modelagem E Naming Strategy
 
 ### 11.1 Nome Logico vs Nome Fisico
 
-- [ ] suporte oficial a `dbName`/`columnName` por coluna
-- [ ] suporte oficial a nome fisico de tabela
-- [ ] hydration respeitando alias logico
-- [ ] compilador SQL respeitando nome fisico
-- [ ] codegen gerando mapping quando necessario
-- [ ] exemplos oficiais com `createdAt -> created_at` e `ownerId -> owner_id`
+- [x] suporte oficial a `dbName`/`columnName` por coluna
+- [x] suporte oficial a nome fisico de tabela
+- [x] hydration respeitando alias logico
+- [x] compilador SQL respeitando nome fisico
+- [x] codegen gerando mapping quando necessario
+- [x] exemplos oficiais com `createdAt -> created_at` e `ownerId -> owner_id`
 
 ### 11.2 Naming Strategy Global
 
-- [ ] `camelCase <-> snake_case` como estrategia configuravel
-- [ ] estrategia por sessao
+- [x] `camelCase <-> snake_case` como estrategia configuravel
+- [x] estrategia por sessao
 - [ ] estrategia por modelo
-- [ ] estrategia usada por codegen e templates
+- [x] estrategia usada por codegen e templates
 
 ### 11.3 Tipos De Coluna Avancados
 
@@ -319,7 +326,7 @@ Conclusao:
 
 ### 17.1 Codegen
 
-- [ ] naming strategy integrada ao codegen
+- [x] naming strategy integrada ao codegen
 - [ ] generated models com comentarios melhores
 - [ ] filtros de introspection
 - [ ] hooks de pos-geracao
@@ -339,19 +346,19 @@ Conclusao:
 
 ## Fase 18: Testing E Confiabilidade
 
-- [ ] fixtures reutilizaveis multi-dialeto
+- [x] fixtures reutilizaveis multi-dialeto
 - [ ] stress tests de concorrencia
 - [ ] testes de isolamento transacional
 - [ ] testes de nested transactions por dialeto
 - [ ] testes de graph ops com dados grandes
-- [ ] testes de naming strategy
+- [x] testes de naming strategy
 - [ ] testes de regressao de performance
 
 ## Fase 19: Benchmark E Perf Governance
 
 - [x] benchmark real versionado dentro do repo
-- [ ] adicionar `drizzle`
-- [ ] adicionar `typeorm`
+- [x] adicionar `drizzle`
+- [x] adicionar `typeorm`
 - [ ] adicionar comparativos por cenario e nao so media geral
 - [ ] versionar resultados baseline dentro do repo
 - [ ] gerar relatorio Markdown/CSV automaticamente
@@ -387,16 +394,17 @@ Conclusao:
 
 ### Bloco A: Ganho Tecnico Rapido
 
-- [ ] naming strategy real
-- [ ] normalizador nativo de Postgres
-- [ ] normalizador nativo de MySQL
-- [ ] fast path de eager loading simples
-- [ ] fixture multi-dialeto
+- [x] naming strategy real
+- [x] normalizador nativo de Postgres
+- [x] normalizador nativo de MySQL
+- [x] fast path de eager loading simples
+- [x] fixture multi-dialeto
 
 ### Bloco B: Ganho De Benchmark
 
-- [ ] benchmark com `drizzle` e `typeorm`
+- [x] benchmark com `drizzle` e `typeorm`
 - [ ] relatorio baseline versionado
+- [ ] comparativos dedicados por cenario (`transaction-read-write`, eager loading, writes)
 - [ ] otimizar transacao Postgres
 - [ ] otimizar eager loading Postgres
 

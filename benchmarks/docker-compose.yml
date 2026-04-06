@@ -2,12 +2,15 @@ services:
   postgres:
     image: postgres:16
     container_name: objx-bench-postgres
+    cpus: ${OBJX_BENCH_POSTGRES_CPUS:-0.50}
+    mem_limit: ${OBJX_BENCH_POSTGRES_MEMORY:-1g}
+    memswap_limit: ${OBJX_BENCH_POSTGRES_MEMORY:-1g}
     environment:
       POSTGRES_DB: objx_bench
       POSTGRES_USER: objx
       POSTGRES_PASSWORD: objx
     ports:
-      - "5432:5432"
+      - "55432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U objx -d objx_bench"]
       interval: 10s
@@ -19,6 +22,9 @@ services:
   mysql:
     image: mysql:8.4
     container_name: objx-bench-mysql
+    cpus: ${OBJX_BENCH_MYSQL_CPUS:-0.50}
+    mem_limit: ${OBJX_BENCH_MYSQL_MEMORY:-1g}
+    memswap_limit: ${OBJX_BENCH_MYSQL_MEMORY:-1g}
     environment:
       MYSQL_DATABASE: objx_bench
       MYSQL_USER: objx
@@ -26,7 +32,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_ROOT_HOST: "%"
     ports:
-      - "3306:3306"
+      - "13306:3306"
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uobjx -pobjx"]
       interval: 10s
@@ -34,6 +40,36 @@ services:
       retries: 20
     volumes:
       - objx-bench-mysql:/var/lib/mysql
+
+  runner:
+    build:
+      context: ..
+      dockerfile: benchmarks/Dockerfile
+    container_name: objx-bench-runner
+    init: true
+    cpus: ${OBJX_BENCH_RUNNER_CPUS:-1.00}
+    mem_limit: ${OBJX_BENCH_RUNNER_MEMORY:-2g}
+    memswap_limit: ${OBJX_BENCH_RUNNER_MEMORY:-2g}
+    working_dir: /workspace/benchmarks
+    environment:
+      POSTGRES_DATABASE_URL: postgresql://objx:objx@postgres:5432/objx_bench
+      MYSQL_DATABASE_URL: mysql://objx:objx@mysql:3306/objx_bench
+      OBJX_BENCH_PROFILE: ${OBJX_BENCH_PROFILE:-docker-standard-2cpu-4g}
+      OBJX_BENCH_STACK_CPUS: ${OBJX_BENCH_STACK_CPUS:-2}
+      OBJX_BENCH_STACK_MEMORY: ${OBJX_BENCH_STACK_MEMORY:-4g}
+      OBJX_BENCH_RUNNER_CPUS: ${OBJX_BENCH_RUNNER_CPUS:-1.00}
+      OBJX_BENCH_RUNNER_MEMORY: ${OBJX_BENCH_RUNNER_MEMORY:-2g}
+      OBJX_BENCH_POSTGRES_CPUS: ${OBJX_BENCH_POSTGRES_CPUS:-0.50}
+      OBJX_BENCH_POSTGRES_MEMORY: ${OBJX_BENCH_POSTGRES_MEMORY:-1g}
+      OBJX_BENCH_MYSQL_CPUS: ${OBJX_BENCH_MYSQL_CPUS:-0.50}
+      OBJX_BENCH_MYSQL_MEMORY: ${OBJX_BENCH_MYSQL_MEMORY:-1g}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./out:/workspace/benchmarks/out
 
 volumes:
   objx-bench-postgres:

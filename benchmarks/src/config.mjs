@@ -1,5 +1,5 @@
 export const SUPPORTED_DIALECTS = ['postgres', 'mysql'];
-export const SUPPORTED_ORMS = ['objx', 'prisma', 'sequelize', 'knex'];
+export const SUPPORTED_ORMS = ['objx', 'prisma', 'sequelize', 'knex', 'drizzle', 'typeorm'];
 
 export const DEFAULTS = {
   people: 3000,
@@ -9,10 +9,29 @@ export const DEFAULTS = {
   pageSize: 25,
   dialects: [...SUPPORTED_DIALECTS],
   orms: [...SUPPORTED_ORMS],
-  postgresUrl: process.env.POSTGRES_DATABASE_URL ?? 'postgresql://objx:objx@127.0.0.1:5432/objx_bench',
-  mysqlUrl: process.env.MYSQL_DATABASE_URL ?? 'mysql://objx:objx@127.0.0.1:3306/objx_bench',
+  postgresUrl: process.env.POSTGRES_DATABASE_URL ?? 'postgresql://objx:objx@127.0.0.1:55432/objx_bench',
+  mysqlUrl: process.env.MYSQL_DATABASE_URL ?? 'mysql://objx:objx@127.0.0.1:13306/objx_bench',
   outputPath: 'out/latest.json',
 };
+
+export function resolveBenchmarkEnvironmentMetadata() {
+  const mode = process.env.OBJX_BENCH_PROFILE ? 'docker' : 'host';
+
+  return {
+    mode,
+    profile: process.env.OBJX_BENCH_PROFILE ?? 'host-local',
+    resources: {
+      stackCpus: process.env.OBJX_BENCH_STACK_CPUS ?? null,
+      stackMemory: process.env.OBJX_BENCH_STACK_MEMORY ?? null,
+      runnerCpus: process.env.OBJX_BENCH_RUNNER_CPUS ?? null,
+      runnerMemory: process.env.OBJX_BENCH_RUNNER_MEMORY ?? null,
+      postgresCpus: process.env.OBJX_BENCH_POSTGRES_CPUS ?? null,
+      postgresMemory: process.env.OBJX_BENCH_POSTGRES_MEMORY ?? null,
+      mysqlCpus: process.env.OBJX_BENCH_MYSQL_CPUS ?? null,
+      mysqlMemory: process.env.OBJX_BENCH_MYSQL_MEMORY ?? null,
+    },
+  };
+}
 
 export function applyDefaultDatabaseEnvironment(config) {
   process.env.POSTGRES_DATABASE_URL ??= config.postgresUrl;

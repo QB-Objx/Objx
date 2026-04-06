@@ -157,6 +157,20 @@ export class ColumnBuilder<
     });
   }
 
+  dbName(
+    name: string,
+  ): ColumnBuilder<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
+    const normalized = name.trim();
+
+    if (!normalized) {
+      throw new Error('Column database name cannot be empty.');
+    }
+
+    return this.configure({
+      dbName: normalized,
+    });
+  }
+
   build(): ColumnDefinition<TValue, TKind, TNullable, TPrimary, THasDefault, TGenerated> {
     return deepFreeze({
       kind: this.#state.kind,

@@ -420,7 +420,7 @@ function resolveRelationJoins(
       ),
       createJoinNode(
         joinType,
-        targetModel.table,
+        targetModel.dbTable,
         deepFreeze([createJoinCondition(relation.through.to, relation.to)]),
         relationName,
       ),
@@ -430,7 +430,7 @@ function resolveRelationJoins(
   return deepFreeze([
     createJoinNode(
       joinType,
-      targetModel.table,
+      targetModel.dbTable,
       deepFreeze([createJoinCondition(relation.from, relation.to)]),
       relationName,
     ),
@@ -847,7 +847,7 @@ export class SelectQueryBuilder<
       cloneSelectNode(this.#model, this.#node, {
         joins: deepFreeze([
           ...this.#node.joins,
-          createJoinNode('inner', model.table, normalizeJoinConditions(conditions)),
+          createJoinNode('inner', model.dbTable, normalizeJoinConditions(conditions)),
         ]),
       }),
     );
@@ -862,7 +862,7 @@ export class SelectQueryBuilder<
       cloneSelectNode(this.#model, this.#node, {
         joins: deepFreeze([
           ...this.#node.joins,
-          createJoinNode('left', model.table, normalizeJoinConditions(conditions)),
+          createJoinNode('left', model.dbTable, normalizeJoinConditions(conditions)),
         ]),
       }),
     );

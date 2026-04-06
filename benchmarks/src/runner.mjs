@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 
-const scenarios = [
+export const scenarios = [
   {
     id: 'find-by-id',
     run(adapter, context, iteration) {
@@ -42,7 +42,7 @@ const scenarios = [
   },
 ];
 
-async function measureScenario(adapter, scenario, config, context) {
+export async function measureScenario(adapter, scenario, config, context) {
   for (let iteration = 0; iteration < config.warmup; iteration += 1) {
     await scenario.run(adapter, context, iteration);
   }
@@ -74,7 +74,7 @@ async function measureScenario(adapter, scenario, config, context) {
   };
 }
 
-export async function runBenchmarks(adapters, config) {
+export async function runBenchmarksForScenarios(adapters, config, scenarioIds) {
   const context = {
     people: config.people,
     pageSize: config.pageSize,
@@ -83,12 +83,19 @@ export async function runBenchmarks(adapters, config) {
     },
   };
   const results = [];
+  const activeScenarios = scenarioIds
+    ? scenarios.filter((scenario) => scenarioIds.includes(scenario.id))
+    : scenarios;
 
   for (const adapter of adapters) {
-    for (const scenario of scenarios) {
+    for (const scenario of activeScenarios) {
       results.push(await measureScenario(adapter, scenario, config, context));
     }
   }
 
   return results;
+}
+
+export async function runBenchmarks(adapters, config) {
+  return runBenchmarksForScenarios(adapters, config);
 }

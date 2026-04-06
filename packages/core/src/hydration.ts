@@ -3,6 +3,11 @@ import type { AnyModelDefinition, InferModelShape } from './model.js';
 
 export interface HydrationOptions {
   readonly preserveUnknownKeys?: boolean;
+  readonly resolveSourceColumnName?: (
+    columnName: string,
+    definition: AnyColumnDefinition,
+    model: AnyModelDefinition,
+  ) => string;
 }
 
 export type ColumnHydrator<TValue = unknown> = (
@@ -12,6 +17,25 @@ export type ColumnHydrator<TValue = unknown> = (
 
 function hasOwnKey(target: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(target, key);
+}
+
+function resolveSourceColumnName(
+  model: AnyModelDefinition,
+  columnName: string,
+  definition: AnyColumnDefinition,
+  options: HydrationOptions,
+): string {
+  const resolvedByOption = options.resolveSourceColumnName?.(columnName, definition, model);
+
+  if (typeof resolvedByOption === 'string' && resolvedByOption.trim().length > 0) {
+    return resolvedByOption;
+  }
+
+  const configuredDbName = definition.config.dbName;
+
+  return typeof configuredDbName === 'string' && configuredDbName.trim().length > 0
+    ? configuredDbName
+    : columnName;
 }
 
 function coerceBoolean(value: unknown): unknown {
@@ -159,16 +183,11 @@ export function hydrateModelRow<TModel extends AnyModelDefinition>(
 ): InferModelShape<TModel> & Record<string, unknown> {
   const preserveUnknownKeys = options.preserveUnknownKeys ?? true;
   const hydrated: Record<string, unknown> = preserveUnknownKeys ? { ...row } : {};
+  const columnDefinitions = model.columnDefinitions as Record<string, AnyColumnDefinition>;
 
-  for (const [columnName, definition] of Object.entries(model.columnDefinitions) as [
-    string,
-    AnyColumnDefinition,
-  ][]) {
-    const configuredDbName = definition.config.dbName;
-    const sourceColumnName =
-      typeof configuredDbName === 'string' && configuredDbName.trim().length > 0
-        ? configuredDbName
-        : columnName;
+  for (const columnName in columnDefinitions) {
+    const definition = columnDefinitions[columnName] as AnyColumnDefinition;
+    const sourceColumnName = resolveSourceColumnName(model, columnName, definition, options);
 
     if (!hasOwnKey(row, sourceColumnName)) {
       continue;
@@ -189,5 +208,11 @@ export function hydrateModelRows<TModel extends AnyModelDefinition>(
   rows: readonly Readonly<Record<string, unknown>>[],
   options?: HydrationOptions,
 ): readonly (InferModelShape<TModel> & Record<string, unknown>)[] {
-  return rows.map((row) => hydrateModelRow(model, row, options));
+  const hydratedRows = new Array<InferModelShape<TModel> & Record<string, unknown>>(rows.length);
+
+  for (let index = 0; index < rows.length; index += 1) {
+    hydratedRows[index] = hydrateModelRow(model, rows[index]!, options);
+  }
+
+  return hydratedRows;
 }

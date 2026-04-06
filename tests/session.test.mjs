@@ -9,6 +9,7 @@ import {
   defineModel,
   hasMany,
   hasOne,
+  manyToMany,
 } from '@qbobjx/core';
 import {
   defineMigration,
@@ -19,6 +20,7 @@ import {
 } from '@qbobjx/codegen';
 import {
   ObjxSqlCompiler,
+  createSnakeCaseNamingStrategy,
   createSession,
   identifier,
   ref,
@@ -115,7 +117,47 @@ class FakeDriver {
           },
         ],
       ],
-      ['person_pets', []],
+      [
+        'session_people',
+        [
+          {
+            id: '1',
+            name: 'Ada',
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+      ],
+      [
+        'session_pets',
+        [
+          {
+            id: '10',
+            owner_id: '1',
+            name: 'Turing',
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+          {
+            id: '11',
+            owner_id: '1',
+            name: 'Lambda',
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+      ],
+      [
+        'session_person_pets',
+        [
+          { person_id: '1', pet_id: '10' },
+          { person_id: '1', pet_id: '11' },
+        ],
+      ],
+      [
+        'person_pets',
+        [
+          { personId: '1', petId: '10' },
+          { personId: '1', petId: '11' },
+        ],
+      ],
     ]);
     this.sequences = new Map([
       ['people', 1],
@@ -132,6 +174,9 @@ class FakeDriver {
       ['articles', 2],
       ['snowflake_projects', 0],
       ['snake_accounts', 1],
+      ['session_people', 1],
+      ['session_pets', 11],
+      ['session_person_pets', 0],
       ['person_pets', 0],
     ]);
     this.transactionCount = 0;
@@ -684,6 +729,22 @@ class FakeMySqlPoolConnection {
     return this.pool.query(sqlText, parameters);
   }
 
+  async execute(sqlText, parameters = []) {
+    return this.pool.execute(sqlText, parameters);
+  }
+
+  async beginTransaction() {
+    return this.pool.beginTransaction();
+  }
+
+  async commit() {
+    return this.pool.commit();
+  }
+
+  async rollback() {
+    return this.pool.rollback();
+  }
+
   release() {
     if (this.released) {
       return;
@@ -701,11 +762,29 @@ class FakeMySqlPool {
     this.transactionScopes = [];
     this.connectCount = 0;
     this.releaseCount = 0;
+    this.executeCount = 0;
     this.ended = false;
   }
 
   async query(sqlText, parameters = []) {
     return this.#execute(sqlText, parameters);
+  }
+
+  async execute(sqlText, parameters = []) {
+    this.executeCount += 1;
+    return this.#execute(sqlText, parameters);
+  }
+
+  async beginTransaction() {
+    return this.#execute('start transaction', []);
+  }
+
+  async commit() {
+    return this.#execute('commit', []);
+  }
+
+  async rollback() {
+    return this.#execute('rollback', []);
   }
 
   async getConnection() {
@@ -883,6 +962,15 @@ const Pet = defineModel({
   },
 });
 
+const PersonPetLink = defineModel({
+  name: 'PersonPetLink',
+  table: 'person_pets',
+  columns: {
+    personId: col.int(),
+    petId: col.int(),
+  },
+});
+
 const StrictPet = defineModel({
   name: 'StrictPet',
   table: 'strict_pets',
@@ -995,6 +1083,28 @@ const Person = defineModel({
     favoritePet: belongsToOne(() => Pet, {
       from: person.columns.id,
       to: Pet.columns.ownerId,
+    }),
+  }),
+});
+
+const PersonWithPetLinks = defineModel({
+  name: 'PersonWithPetLinks',
+  table: 'people',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+    active: col.boolean(),
+    profile: col.json(),
+    createdAt: col.timestamp(),
+  },
+  relations: (person) => ({
+    linkedPets: manyToMany(() => Pet, {
+      from: person.columns.id,
+      to: Pet.columns.id,
+      through: {
+        from: PersonPetLink.columns.personId,
+        to: PersonPetLink.columns.petId,
+      },
     }),
   }),
 });
@@ -1131,6 +1241,87 @@ const SnakeCaseCustomAccount = defineModel({
       },
     }),
   ],
+});
+
+const PluginTableAccount = defineModel({
+  name: 'PluginTableAccount',
+  table: 'pluginTableAccounts',
+  columns: {
+    id: col.int().primary(),
+    tenantId: col.text(),
+  },
+  plugins: [createSnakeCaseNamingPlugin({ table: true })],
+});
+
+const SessionNamedPet = defineModel({
+  name: 'SessionNamedPet',
+  table: 'sessionPets',
+  columns: {
+    id: col.int().primary(),
+    ownerId: col.int().nullable(),
+    name: col.text(),
+    createdAt: col.timestamp(),
+  },
+});
+
+const SessionNamedPersonPet = defineModel({
+  name: 'SessionNamedPersonPet',
+  table: 'sessionPersonPets',
+  columns: {
+    personId: col.int(),
+    petId: col.int(),
+  },
+});
+
+const SessionNamedPerson = defineModel({
+  name: 'SessionNamedPerson',
+  table: 'sessionPeople',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+    createdAt: col.timestamp(),
+  },
+  relations: (person) => ({
+    pets: hasMany(() => SessionNamedPet, {
+      from: person.columns.id,
+      to: SessionNamedPet.columns.ownerId,
+    }),
+    linkedPets: manyToMany(() => SessionNamedPet, {
+      from: person.columns.id,
+      to: SessionNamedPet.columns.id,
+      through: {
+        from: SessionNamedPersonPet.columns.personId,
+        to: SessionNamedPersonPet.columns.petId,
+      },
+    }),
+  }),
+});
+
+const DbMappedCompany = defineModel({
+  name: 'DbMappedCompany',
+  table: 'company',
+  dbTable: 'company_records',
+  columns: {
+    id: col.int().primary(),
+    name: col.text(),
+  },
+});
+
+const DbMappedUser = defineModel({
+  name: 'DbMappedUser',
+  table: 'user',
+  dbTable: 'user_records',
+  columns: {
+    id: col.int().primary(),
+    companyId: col.int().dbName('company_id'),
+    email: col.text(),
+  },
+  relations: (model) => ({
+    company: belongsToOne(() => DbMappedCompany, {
+      from: model.columns.companyId,
+      to: DbMappedCompany.columns.id,
+    }),
+  }),
 });
 
 const tests = [
@@ -1285,6 +1476,66 @@ const tests = [
     },
   ],
   [
+    'snake_case naming plugin can map logical table names to physical snake_case tables',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        PluginTableAccount.query().where(({ tenantId }, operators) => operators.eq(tenantId, 'tenant_a')),
+      );
+
+      assert.match(compiled.sql, /from "plugin_table_accounts"/i);
+      assert.match(compiled.sql, /"plugin_table_accounts"\."tenant_id"\s+as\s+"tenantId"/i);
+      assert.match(compiled.sql, /where "plugin_table_accounts"\."tenant_id" = \$1/i);
+    },
+  ],
+  [
+    'session naming strategy maps tables and columns globally, including eager loaded relations',
+    async () => {
+      const session = createSession({
+        driver: new FakeDriver(),
+        hydrateByDefault: true,
+        namingStrategy: createSnakeCaseNamingStrategy(),
+      });
+
+      const rows = await session.execute(
+        SessionNamedPerson.query()
+          .where(({ id }, operators) => operators.eq(id, 1))
+          .withRelated({
+            pets: true,
+            linkedPets: true,
+          })
+          .limit(1),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].name, 'Ada');
+      assert.ok(rows[0].createdAt instanceof Date);
+      assert.equal(rows[0].pets.length, 2);
+      assert.equal(rows[0].pets[0].ownerId, 1);
+      assert.ok(rows[0].pets[0].createdAt instanceof Date);
+      assert.equal(rows[0].linkedPets.length, 2);
+      assert.equal(rows[0].linkedPets[0].name, 'Turing');
+      assert.equal(rows[0].linkedPets[1].name, 'Lambda');
+    },
+  ],
+  [
+    'compiler respects explicit dbTable mappings across joins and predicates',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        DbMappedUser.query()
+          .joinRelated('company')
+          .where(({ companyId }, operators) => operators.eq(companyId, 1)),
+      );
+
+      assert.match(compiled.sql, /from "user_records"/i);
+      assert.match(compiled.sql, /join "company_records" on "user_records"\."company_id" = "company_records"\."id"/i);
+      assert.match(compiled.sql, /where "user_records"\."company_id" = \$1/i);
+    },
+  ],
+  [
     'raw refs wrap dotted identifiers, aliases and stars',
     async () => {
       const compiled = new ObjxSqlCompiler({
@@ -1358,6 +1609,29 @@ const tests = [
         compiled.parameters.map((parameter) => parameter.value),
         [1, 'Ada', true],
       );
+    },
+  ],
+  [
+    'compiler reuses sql shape for structurally identical queries with different values',
+    async () => {
+      const compiler = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      });
+
+      const first = compiler.compile(
+        Person.query()
+          .where(({ id }, operators) => operators.eq(id, 1))
+          .limit(1),
+      );
+      const second = compiler.compile(
+        Person.query()
+          .where(({ id }, operators) => operators.eq(id, 42))
+          .limit(1),
+      );
+
+      assert.equal(first.sql, second.sql);
+      assert.deepEqual(first.parameters.map((parameter) => parameter.value), [1, 1]);
+      assert.deepEqual(second.parameters.map((parameter) => parameter.value), [42, 1]);
     },
   ],
   [
@@ -2141,6 +2415,7 @@ export default defineSeed({
         );
         assert.equal(pool.connectCount, 2);
         assert.equal(pool.releaseCount, 2);
+        assert.ok(pool.executeCount > 0);
       } finally {
         await driver.close();
       }
@@ -2303,6 +2578,29 @@ export default defineSeed({
       assert.equal(rows[0].pets.length, 2);
       assert.equal(rows[0].pets[0].ownerId, 1);
       assert.equal(rows[0].pets[1].name, 'Lambda');
+    },
+  ],
+  [
+    'session eager limit(1) fast path supports many-to-many relations',
+    async () => {
+      const session = createSession({
+        driver: new FakeDriver(),
+      });
+
+      const rows = await session.execute(
+        PersonWithPetLinks.query()
+          .where(({ id }, op) => op.eq(id, 1))
+          .withRelated('linkedPets')
+          .limit(1),
+        {
+          hydrate: true,
+        },
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].linkedPets.length, 2);
+      assert.equal(rows[0].linkedPets[0].id, 10);
+      assert.equal(rows[0].linkedPets[1].name, 'Lambda');
     },
   ],
   [

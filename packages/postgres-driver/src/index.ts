@@ -1,12 +1,17 @@
 import {
+  createDefaultSqlResultNormalizer,
   createObjxSqlCompiler,
   createSession,
   type CompiledQuery,
   type ObjxSession,
   type ObjxSessionOptions,
+  type SqlResultNormalizer,
+  type SqlResultNormalizerContext,
+  type SqlResultSet,
   type SqlExecutionRequest,
   type SqlDriver,
   type SqlTransactionRequest,
+  isSqlResultSet,
 } from '@qbobjx/sql-engine';
 
 export type PostgresQueryResultRow = Record<string, unknown>;
@@ -69,6 +74,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isRowArray(value: unknown): value is readonly PostgresQueryResultRow[] {
+  return Array.isArray(value) && value.every((item) => isRecord(item));
+}
+
 function isPostgresQueryExecutor(value: unknown): value is PostgresQueryExecutor {
   return isRecord(value) && 'query' in value && typeof value.query === 'function';
 }
@@ -86,10 +95,6 @@ function isInternalPostgresTransaction(
     'depth' in value &&
     typeof value.depth === 'number'
   );
-}
-
-function quoteSavepoint(name: string): string {
-  return `"${name.replaceAll('"', '""')}"`;
 }
 
 function serializePostgresParameter(value: unknown): unknown {
@@ -139,6 +144,39 @@ async function runQuery(
   compiledQuery: CompiledQuery,
 ): Promise<PostgresQueryResult> {
   return client.query(compiledQuery.sql, extractSqlParameters(compiledQuery));
+}
+
+const BEGIN_SQL = 'begin';
+const COMMIT_SQL = 'commit';
+const ROLLBACK_SQL = 'rollback';
+const SAVEPOINT_PREFIX = 'objx_sp_';
+
+export class PostgresResultNormalizer implements SqlResultNormalizer {
+  readonly #fallback = createDefaultSqlResultNormalizer();
+
+  normalize(
+    result: unknown,
+    context: SqlResultNormalizerContext,
+  ): SqlResultSet {
+    if (isSqlResultSet(result)) {
+      return result;
+    }
+
+    if (isRecord(result) && 'rows' in result && isRowArray(result.rows)) {
+      return {
+        rows: result.rows,
+        rowCount: typeof result.rowCount === 'number' ? result.rowCount : result.rows.length,
+        ...(typeof result.command === 'string' ? { command: result.command } : {}),
+        raw: result,
+      };
+    }
+
+    return this.#fallback.normalize(result, context);
+  }
+}
+
+export function createPostgresResultNormalizer(): SqlResultNormalizer {
+  return new PostgresResultNormalizer();
 }
 
 export function createPostgresDriver(
@@ -192,32 +230,28 @@ export function createPostgresDriver(
         : undefined;
 
       if (parentTransaction) {
-        const savepointName = `objx_sp_${++transactionCounter}`;
+        const savepointName = `${SAVEPOINT_PREFIX}${++transactionCounter}`;
+        const nestedTransaction = createTransaction(
+          parentTransaction.client,
+          parentTransaction.depth + 1,
+          driverToken,
+          savepointName,
+        );
 
         await parentTransaction.client.query(
-          `savepoint ${quoteSavepoint(savepointName)}`,
+          `savepoint ${savepointName}`,
         );
 
         try {
-          const result = await callback(
-            createTransaction(
-              parentTransaction.client,
-              parentTransaction.depth + 1,
-              driverToken,
-              savepointName,
-            ),
-          );
+          const result = await callback(nestedTransaction);
           await parentTransaction.client.query(
-            `release savepoint ${quoteSavepoint(savepointName)}`,
+            `release savepoint ${savepointName}`,
           );
           return result;
         } catch (error) {
           try {
             await parentTransaction.client.query(
-              `rollback to savepoint ${quoteSavepoint(savepointName)}`,
-            );
-            await parentTransaction.client.query(
-              `release savepoint ${quoteSavepoint(savepointName)}`,
+              `rollback to savepoint ${savepointName}`,
             );
           } catch {
             // Keep the original failure as the primary error.
@@ -227,37 +261,47 @@ export function createPostgresDriver(
         }
       }
 
-      const runRootTransaction = async (
-        client: PostgresQueryExecutor,
-      ): Promise<TResult> => {
-        await client.query('begin');
-
-        try {
-          const result = await callback(createTransaction(client, 0, driverToken));
-          await client.query('commit');
-          return result;
-        } catch (error) {
-          try {
-            await client.query('rollback');
-          } catch {
-            // Keep the original failure as the primary error.
-          }
-
-          throw error;
-        }
-      };
-
       if (pool) {
         const transactionClient = await pool.connect();
+        const rootTransaction = createTransaction(transactionClient, 0, driverToken);
 
         try {
-          return runRootTransaction(transactionClient);
+          await transactionClient.query(BEGIN_SQL);
+
+          try {
+            const result = await callback(rootTransaction);
+            await transactionClient.query(COMMIT_SQL);
+            return result;
+          } catch (error) {
+            try {
+              await transactionClient.query(ROLLBACK_SQL);
+            } catch {
+              // Keep the original failure as the primary error.
+            }
+
+            throw error;
+          }
         } finally {
           transactionClient.release();
         }
       }
 
-      return runRootTransaction(baseClient);
+      const rootTransaction = createTransaction(baseClient, 0, driverToken);
+      await baseClient.query(BEGIN_SQL);
+
+      try {
+        const result = await callback(rootTransaction);
+        await baseClient.query(COMMIT_SQL);
+        return result;
+      } catch (error) {
+        try {
+          await baseClient.query(ROLLBACK_SQL);
+        } catch {
+          // Keep the original failure as the primary error.
+        }
+
+        throw error;
+      }
     },
     async close() {
       if (closePoolOnDispose && pool && typeof pool.end === 'function') {
@@ -279,7 +323,7 @@ export function createPostgresSession(
       : {}),
     ...(options.observers ? { observers: options.observers } : {}),
     ...(options.plugins ? { plugins: options.plugins } : {}),
-    ...(options.resultNormalizer ? { resultNormalizer: options.resultNormalizer } : {}),
+    resultNormalizer: options.resultNormalizer ?? createPostgresResultNormalizer(),
     ...(options.hydrateByDefault !== undefined
       ? { hydrateByDefault: options.hydrateByDefault }
       : {}),

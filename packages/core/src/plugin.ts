@@ -32,7 +32,10 @@ export interface ErrorPluginContext extends QueryPluginContext {
 export interface ModelDefinePluginContext {
   readonly modelName: string;
   readonly table: string;
+  readonly dbTable: string;
   readonly columnDefinitions: Readonly<Record<string, AnyColumnDefinition>>;
+  setTableDbName(dbTable: string): void;
+  getTableDbName(): string;
   setColumnDbName(columnKey: string, dbName: string): void;
   getColumnDbName(columnKey: string): string | undefined;
 }

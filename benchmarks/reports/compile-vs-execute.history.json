@@ -1,0 +1,335 @@
+[
+  {
+    "generatedAt": "2026-04-06T14:35:39.674Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "warmup": 1,
+      "iterations": 2,
+      "pageSize": 25,
+      "dialects": [
+        "postgres",
+        "mysql"
+      ]
+    },
+    "results": [
+      {
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.048,
+        "avgMs": 0.0238,
+        "opsPerSec": 42016.81
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.04,
+        "avgMs": 0.02005,
+        "opsPerSec": 49875.31
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.741,
+        "avgMs": 1.8704,
+        "opsPerSec": 534.64
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.977,
+        "avgMs": 1.48875,
+        "opsPerSec": 671.7
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.972,
+        "avgMs": 1.48605,
+        "opsPerSec": 672.92
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.022,
+        "avgMs": 0.01075,
+        "opsPerSec": 93023.26
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.035,
+        "avgMs": 0.01725,
+        "opsPerSec": 57971.01
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.769,
+        "avgMs": 1.8844,
+        "opsPerSec": 530.67
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.17,
+        "avgMs": 1.585,
+        "opsPerSec": 630.91
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.603,
+        "avgMs": 2.3016,
+        "opsPerSec": 434.48
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.024,
+        "avgMs": 0.01175,
+        "opsPerSec": 85106.38
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.024,
+        "avgMs": 0.01195,
+        "opsPerSec": 83682.01
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 11.408,
+        "avgMs": 5.70395,
+        "opsPerSec": 175.32
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 14.886,
+        "avgMs": 7.44295,
+        "opsPerSec": 134.36
+      },
+      {
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 10.361,
+        "avgMs": 5.18035,
+        "opsPerSec": 193.04
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.03,
+        "avgMs": 0.01475,
+        "opsPerSec": 67796.61
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.017,
+        "avgMs": 0.0084,
+        "opsPerSec": 119047.62
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.201,
+        "avgMs": 1.6006,
+        "opsPerSec": 624.77
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.218,
+        "avgMs": 1.10895,
+        "opsPerSec": 901.75
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.206,
+        "avgMs": 1.10285,
+        "opsPerSec": 906.74
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.006,
+        "avgMs": 0.0029,
+        "opsPerSec": 344827.59
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.014,
+        "avgMs": 0.0072,
+        "opsPerSec": 138888.89
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.777,
+        "avgMs": 1.38845,
+        "opsPerSec": 720.23
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.35,
+        "avgMs": 1.1752,
+        "opsPerSec": 850.92
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 2.713,
+        "avgMs": 1.35635,
+        "opsPerSec": 737.27
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "phase": "compile-cache-hit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.01,
+        "avgMs": 0.005,
+        "opsPerSec": 200000
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "phase": "compile-no-cache",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 0.024,
+        "avgMs": 0.01205,
+        "opsPerSec": 82987.55
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "phase": "driver-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.12,
+        "avgMs": 1.5601,
+        "opsPerSec": 640.98
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "phase": "session-execute-precompiled",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 1.598,
+        "avgMs": 0.79905,
+        "opsPerSec": 1251.49
+      },
+      {
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "phase": "session-execute-builder",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 1.725,
+        "avgMs": 0.8627,
+        "opsPerSec": 1159.15
+      }
+    ]
+  }
+]

@@ -50,6 +50,8 @@ function isExecutionContext(value: ExecutionContext | ExecutionContextInit): val
   return 'id' in value && 'values' in value;
 }
 
+const EMPTY_CONTEXT_VALUES = new Map<string, unknown>();
+
 export class ExecutionContextManager {
   readonly #store: ExecutionContextStore<ExecutionContext>;
 
@@ -65,11 +67,14 @@ export class ExecutionContextManager {
 
   create(init: ExecutionContextInit = {}): ExecutionContext {
     const parent = init.parent ?? this.current();
-    const values = new Map<string, unknown>(parent?.values ?? []);
+    const baseValues = parent?.values ?? EMPTY_CONTEXT_VALUES;
+    let values: ReadonlyMap<string, unknown> | Map<string, unknown> = baseValues;
 
     if (init.values) {
+      values = new Map<string, unknown>(baseValues);
+
       for (const [key, value] of Object.entries(init.values)) {
-        values.set(key, value);
+        (values as Map<string, unknown>).set(key, value);
       }
     }
 

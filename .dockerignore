@@ -1,0 +1,10 @@
+.git
+.github
+.npm-cache
+node_modules
+benchmarks/node_modules
+benchmarks/generated
+benchmarks/out
+packages/*/dist
+**/node_modules
+**/dist

@@ -229,8 +229,8 @@ export const Account = defineModel({
   table: 'accounts',
   columns: {
     id: col.int().primary(),
-    tenantId: col.text().configure({ dbName: 'tenant_id' }),
-    createdAt: col.timestamp().configure({ dbName: 'created_at' }),
+    tenantId: col.text().dbName('tenant_id'),
+    createdAt: col.timestamp().dbName('created_at'),
   },
 });
 ```
@@ -264,6 +264,22 @@ The SQL compiler uses the configured database column names for `select`, `insert
 Important: `createSnakeCaseNamingPlugin()` should be attached when defining the model. It changes
 column metadata during model definition, so registering it only as a session-global plugin is too
 late for column remapping.
+
+If you want physical naming to be decided by the runtime instead of the model metadata, the SQL
+engine also exposes a session-wide naming strategy:
+
+```ts
+import { createSnakeCaseNamingStrategy, createSession } from '@qbobjx/sql-engine';
+
+const session = createSession({
+  driver,
+  namingStrategy: createSnakeCaseNamingStrategy(),
+  hydrateByDefault: true,
+});
+```
+
+This is useful when you want one logical model definition reused across different physical naming
+conventions without mutating model metadata.
 
 ## Relations
 
@@ -955,15 +971,52 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 - `examples/express-api`: REST API with Express, SQLite, snake_case physical columns, validation, and CRUD
 - `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and snake_case physical columns
 - `examples/benchmarks`: compiler/runtime microbenchmark suite
-- `benchmarks`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, and `Knex`
+- `benchmarks`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, `Knex`, `Drizzle`, and `TypeORM`
 
 ## Real Benchmark
 
 ```bash
-npm run benchmark:install
 npm run benchmark:db:up
 npm run benchmark:setup
 npm run benchmark
+```
+
+O caminho oficial agora roda em Docker com um perfil padrao de benchmark:
+
+- stack total alvo: `2 CPU` / `4 GB RAM`
+- `runner`: `1 CPU` / `2 GB RAM`
+- `postgres`: `0.5 CPU` / `1 GB RAM`
+- `mysql`: `0.5 CPU` / `1 GB RAM`
+
+Para depuracao local fora do container:
+
+```bash
+npm run benchmark:setup:host
+npm run benchmark:host
+```
+
+Benchmark dedicado de eager loading por cardinalidade:
+
+```bash
+npm run benchmark:eager
+```
+
+Benchmark dedicado de fronteira transacional (`begin/commit` e `begin/rollback`):
+
+```bash
+npm run benchmark:tx
+```
+
+Comparativo transacional focado em `OBJX`, `Knex` e `Prisma`:
+
+```bash
+npm run benchmark:tx:compare
+```
+
+Benchmark dedicado para separar compile, execute do driver e execute da sessao:
+
+```bash
+npm run benchmark:compile
 ```
 
 Reference:

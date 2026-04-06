@@ -30,15 +30,15 @@ export class ModelRegistry {
         );
       }
 
-      if (this.#registrationsByTable.has(model.table)) {
+      if (this.#registrationsByTable.has(model.dbTable)) {
         throw new DuplicateModelRegistrationError(
-          `Model table "${model.table}" is already registered.`,
+          `Model table "${model.dbTable}" is already registered.`,
         );
       }
 
       const registration = this.#pluginRuntime.registerModel(model);
       this.#registrationsByName.set(model.name, registration);
-      this.#registrationsByTable.set(model.table, registration);
+      this.#registrationsByTable.set(model.dbTable, registration);
     }
 
     return models;

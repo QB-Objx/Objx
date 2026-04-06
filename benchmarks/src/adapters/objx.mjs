@@ -27,6 +27,8 @@ function createMySqlConnectionOptions(connectionString) {
   };
 }
 
+const TX_ROLLBACK_SENTINEL = 'objx-benchmark-rollback';
+
 function createObjxRecord(dialect, session, close) {
   return {
     orm: 'objx',
@@ -85,6 +87,22 @@ function createObjxRecord(dialect, session, close) {
           }).where(({ id: personId }, op) => op.eq(personId, id)),
         );
       });
+    },
+    transactionBeginCommit() {
+      return session.transaction(async () => undefined);
+    },
+    async transactionBeginRollback() {
+      try {
+        await session.transaction(async () => {
+          throw new Error(TX_ROLLBACK_SENTINEL);
+        });
+      } catch (error) {
+        if (error?.cause?.message === TX_ROLLBACK_SENTINEL || error?.message === TX_ROLLBACK_SENTINEL) {
+          return;
+        }
+
+        throw error;
+      }
     },
   };
 }

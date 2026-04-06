@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  createObjxModelGenerator,
   createMigrationSeedSchemasTemplate,
   createMySqlStarterTemplate,
   createPostgresStarterTemplate,
@@ -425,6 +426,47 @@ async function createSchemaDirectory(tempDir) {
 
 const tests = [
   [
+    'generate maps snake_case tables and columns to logical camelCase with physical mappings',
+    async () => {
+      const generator = createObjxModelGenerator({
+        outDir: 'generated/models',
+      });
+      const files = await generator.generate({
+        dialect: 'postgres',
+        tables: [
+          {
+            name: 'user_profiles',
+            columns: [
+              {
+                name: 'id',
+                type: 'integer',
+                nullable: false,
+                primary: true,
+              },
+              {
+                name: 'created_at',
+                type: 'timestamp with time zone',
+                nullable: false,
+              },
+              {
+                name: 'owner_id',
+                type: 'integer',
+                nullable: false,
+              },
+            ],
+          },
+        ],
+      });
+      const modelFile = files.find((file) => file.path.endsWith('user_profiles.model.ts'));
+
+      assert.ok(modelFile);
+      assert.match(modelFile.contents, /table: 'userProfiles'/);
+      assert.match(modelFile.contents, /dbTable: 'user_profiles'/);
+      assert.match(modelFile.contents, /createdAt: col\.timestamp\(\)\.dbName\('created_at'\)/);
+      assert.match(modelFile.contents, /ownerId: col\.int\(\)\.dbName\('owner_id'\)/);
+    },
+  ],
+  [
     'generate maps bigint columns to col.bigint()',
     async () => {
       const tempDir = await mkdtemp(path.join(process.cwd(), 'tests', 'objx-codegen-bigint-'));
@@ -746,12 +788,20 @@ const tests = [
       );
       const postgresReadme = postgresSchemaFiles.find((file) => file.path.endsWith('README.md')).contents;
 
-      assert.equal(postgresPackage.dependencies['@qbobjx/postgres-driver'], '0.1.0');
+      assert.equal(postgresPackage.dependencies['@qbobjx/postgres-driver'], '0.2.0');
       assert.equal(postgresPackage.dependencies.pg, '^8.0.0');
-      assert.equal(mysqlPackage.dependencies['@qbobjx/mysql-driver'], '0.1.0');
+      assert.equal(mysqlPackage.dependencies['@qbobjx/mysql-driver'], '0.2.0');
       assert.equal(mysqlPackage.dependencies.mysql2, '^3.0.0');
       assert.match(postgresReadme, /--dialect postgres/);
       assert.match(postgresReadme, /postgresql:\/\/postgres/);
+      assert.match(
+        postgresStarterFiles.find((file) => file.path.endsWith('src/models.mjs')).contents,
+        /createSnakeCaseNamingPlugin\(\)/,
+      );
+      assert.match(
+        postgresStarterFiles.find((file) => file.path.endsWith('schema.sql')).contents,
+        /tenant_id/,
+      );
     },
   ],
 ];

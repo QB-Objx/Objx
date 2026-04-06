@@ -1,12 +1,17 @@
 import {
+  createDefaultSqlResultNormalizer,
   createObjxSqlCompiler,
   createSession,
   type CompiledQuery,
   type ObjxSession,
   type ObjxSessionOptions,
+  type SqlResultNormalizer,
+  type SqlResultNormalizerContext,
+  type SqlResultSet,
   type SqlExecutionRequest,
   type SqlDriver,
   type SqlTransactionRequest,
+  isSqlResultSet,
 } from '@qbobjx/sql-engine';
 
 export type MySqlQueryResultRow = Record<string, unknown>;
@@ -31,6 +36,10 @@ export interface MySqlQueryResult<
 
 export interface MySqlQueryExecutor {
   query(sqlText: string, parameters?: readonly unknown[]): Promise<unknown>;
+  execute?(sqlText: string, parameters?: readonly unknown[]): Promise<unknown>;
+  beginTransaction?(): Promise<void>;
+  commit?(): Promise<void>;
+  rollback?(): Promise<void>;
 }
 
 export interface MySqlPoolConnection extends MySqlQueryExecutor {
@@ -107,10 +116,6 @@ function isMySqlOkPacketLike(value: unknown): value is MySqlOkPacketLike {
 
 function isRowArray(value: unknown): value is readonly MySqlQueryResultRow[] {
   return Array.isArray(value) && value.every((item) => isRecord(item));
-}
-
-function quoteIdentifier(name: string): string {
-  return `\`${name.replaceAll('`', '``')}\``;
 }
 
 function serializeMySqlParameter(value: unknown): unknown {
@@ -239,6 +244,29 @@ function normalizeMySqlQueryResult(raw: unknown): MySqlQueryResult {
   throw new TypeError('Unsupported MySQL query result shape returned by query executor.');
 }
 
+export class MySqlResultNormalizer implements SqlResultNormalizer {
+  readonly #fallback = createDefaultSqlResultNormalizer();
+
+  normalize(
+    result: unknown,
+    context: SqlResultNormalizerContext,
+  ): SqlResultSet {
+    if (isSqlResultSet(result)) {
+      return result;
+    }
+
+    try {
+      return normalizeMySqlQueryResult(result);
+    } catch {
+      return this.#fallback.normalize(result, context);
+    }
+  }
+}
+
+export function createMySqlResultNormalizer(): SqlResultNormalizer {
+  return new MySqlResultNormalizer();
+}
+
 function createTransaction(
   client: MySqlQueryExecutor,
   depth: number,
@@ -269,7 +297,13 @@ async function runQuery(
   client: MySqlQueryExecutor,
   compiledQuery: CompiledQuery,
 ): Promise<MySqlQueryResult> {
-  const raw = await client.query(compiledQuery.sql, extractSqlParameters(compiledQuery));
+  const parameters = extractSqlParameters(compiledQuery);
+  const queryKind = compiledQuery.metadata.queryKind;
+  const raw =
+    client.execute &&
+    (queryKind === 'insert' || queryKind === 'update' || queryKind === 'delete')
+      ? await client.execute(compiledQuery.sql, parameters)
+      : await client.query(compiledQuery.sql, parameters);
   return normalizeMySqlQueryResult(raw);
 }
 
@@ -325,7 +359,7 @@ export function createMySqlDriver(
         const savepointName = `objx_sp_${++transactionCounter}`;
 
         await parentTransaction.client.query(
-          `savepoint ${quoteIdentifier(savepointName)}`,
+          `savepoint ${savepointName}`,
         );
 
         try {
@@ -338,16 +372,13 @@ export function createMySqlDriver(
             ),
           );
           await parentTransaction.client.query(
-            `release savepoint ${quoteIdentifier(savepointName)}`,
+            `release savepoint ${savepointName}`,
           );
           return result;
         } catch (error) {
           try {
             await parentTransaction.client.query(
-              `rollback to savepoint ${quoteIdentifier(savepointName)}`,
-            );
-            await parentTransaction.client.query(
-              `release savepoint ${quoteIdentifier(savepointName)}`,
+              `rollback to savepoint ${savepointName}`,
             );
           } catch {
             // Keep the original failure as the primary error.
@@ -360,15 +391,29 @@ export function createMySqlDriver(
       const runRootTransaction = async (
         client: MySqlQueryExecutor,
       ): Promise<TResult> => {
-        await client.query('start transaction');
+        if (client.beginTransaction) {
+          await client.beginTransaction();
+        } else {
+          await client.query('start transaction');
+        }
 
         try {
           const result = await callback(createTransaction(client, 0, driverToken));
-          await client.query('commit');
+
+          if (client.commit) {
+            await client.commit();
+          } else {
+            await client.query('commit');
+          }
+
           return result;
         } catch (error) {
           try {
-            await client.query('rollback');
+            if (client.rollback) {
+              await client.rollback();
+            } else {
+              await client.query('rollback');
+            }
           } catch {
             // Keep the original failure as the primary error.
           }
@@ -409,7 +454,7 @@ export function createMySqlSession(
       : {}),
     ...(options.observers ? { observers: options.observers } : {}),
     ...(options.plugins ? { plugins: options.plugins } : {}),
-    ...(options.resultNormalizer ? { resultNormalizer: options.resultNormalizer } : {}),
+    resultNormalizer: options.resultNormalizer ?? createMySqlResultNormalizer(),
     ...(options.hydrateByDefault !== undefined
       ? { hydrateByDefault: options.hydrateByDefault }
       : {}),

@@ -1570,12 +1570,49 @@ function formatMySqlDateTime(value: Date): string {
 }
 
 function toPascalCase(value: string): string {
+  if (!/[^a-zA-Z0-9]/.test(value)) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
   return value
     .split(/[^a-zA-Z0-9]+/)
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join('');
 }
+
+function toCamelCase(value: string): string {
+  if (!/[^a-zA-Z0-9]/.test(value)) {
+    return value.charAt(0).toLowerCase() + value.slice(1);
+  }
+
+  const parts = value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((segment) => segment.toLowerCase());
+
+  if (parts.length === 0) {
+    return value;
+  }
+
+  return parts
+    .map((segment, index) =>
+      index === 0
+        ? segment
+        : segment.charAt(0).toUpperCase() + segment.slice(1),
+    )
+    .join('');
+}
+
+function escapeSingleQuotedString(value: string): string {
+  return value.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+}
+
+function needsPhysicalNameMapping(logicalName: string, physicalName: string): boolean {
+  return logicalName !== physicalName;
+}
+
+const TEMPLATE_PACKAGE_VERSION = '0.2.0';
 
 function inferPackageName(outDir: string, fallback = 'objx-sqlite-starter'): string {
   const normalized = outDir.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -1585,35 +1622,53 @@ function inferPackageName(outDir: string, fallback = 'objx-sqlite-starter'): str
 
 function renderColumnBuilder(column: IntrospectedColumn): string {
   const normalizedType = column.type.trim().toLowerCase();
-  let builder =
+  const isBigInt =
     normalizedType === 'bigint' ||
     normalizedType === 'int8' ||
     normalizedType === 'bigserial' ||
-    normalizedType === 'serial8'
+    normalizedType === 'serial8';
+  const isInteger =
+    normalizedType === 'int' ||
+    normalizedType === 'integer' ||
+    normalizedType === 'smallint' ||
+    normalizedType === 'int4' ||
+    normalizedType === 'serial' ||
+    normalizedType === 'serial4' ||
+    normalizedType.startsWith('int(') ||
+    normalizedType.startsWith('integer(') ||
+    normalizedType.startsWith('smallint(');
+  const isText =
+    normalizedType === 'text' ||
+    normalizedType === 'varchar' ||
+    normalizedType === 'character varying' ||
+    normalizedType === 'char' ||
+    normalizedType === 'string' ||
+    normalizedType.startsWith('varchar(') ||
+    normalizedType.startsWith('character varying(') ||
+    normalizedType.startsWith('char(');
+  const isTimestamp =
+    normalizedType === 'timestamp' ||
+    normalizedType === 'timestamptz' ||
+    normalizedType === 'timestamp with time zone' ||
+    normalizedType === 'timestamp without time zone' ||
+    normalizedType === 'datetime' ||
+    normalizedType === 'date' ||
+    normalizedType.startsWith('timestamp(') ||
+    normalizedType.startsWith('datetime(');
+  let builder =
+    isBigInt
       ? 'col.bigint()'
-      : normalizedType === 'int' ||
-          normalizedType === 'integer' ||
-          normalizedType === 'smallint' ||
-          normalizedType === 'int4' ||
-          normalizedType === 'serial' ||
-          normalizedType === 'serial4'
+      : isInteger
       ? 'col.int()'
-      : normalizedType === 'text' ||
-          normalizedType === 'varchar' ||
-          normalizedType === 'character varying' ||
-          normalizedType === 'char' ||
-          normalizedType === 'string'
+      : isText
         ? 'col.text()'
-        : normalizedType === 'boolean' || normalizedType === 'bool'
+      : normalizedType === 'boolean' || normalizedType === 'bool'
           ? 'col.boolean()'
           : normalizedType === 'json' || normalizedType === 'jsonb'
             ? 'col.json()'
             : normalizedType === 'uuid'
               ? 'col.uuid()'
-              : normalizedType === 'timestamp' ||
-                  normalizedType === 'timestamptz' ||
-                  normalizedType === 'datetime' ||
-                  normalizedType === 'date'
+              : isTimestamp
                 ? 'col.timestamp()'
                 : `col.custom<unknown>(${JSON.stringify(column.type)})`;
 
@@ -1630,15 +1685,28 @@ function renderColumnBuilder(column: IntrospectedColumn): string {
 
 function renderModelFile(table: IntrospectedTable): string {
   const modelName = toPascalCase(table.name);
+  const logicalTableName = toCamelCase(table.name);
   const columns = table.columns
-    .map((column) => `    ${column.name}: ${renderColumnBuilder(column)},`)
+    .map((column) => {
+      const logicalColumnName = toCamelCase(column.name);
+      let builder = renderColumnBuilder(column);
+
+      if (needsPhysicalNameMapping(logicalColumnName, column.name)) {
+        builder += `.dbName('${escapeSingleQuotedString(column.name)}')`;
+      }
+
+      return `    ${logicalColumnName}: ${builder},`;
+    })
     .join('\n');
+  const tableLine = needsPhysicalNameMapping(logicalTableName, table.name)
+    ? `  table: '${escapeSingleQuotedString(logicalTableName)}',\n  dbTable: '${escapeSingleQuotedString(table.name)}',`
+    : `  table: '${escapeSingleQuotedString(table.name)}',`;
 
   return `import { col, defineModel } from '@qbobjx/core';
 
 export const ${modelName} = defineModel({
   name: '${modelName}',
-  table: '${table.name}',
+${tableLine}
   columns: {
 ${columns}
   },
@@ -1992,10 +2060,10 @@ export function createSqliteStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/sqlite-driver': '0.1.0',
+                '@qbobjx/core': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/sql-engine': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/plugins': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/sqlite-driver': TEMPLATE_PACKAGE_VERSION,
               },
             },
             null,
@@ -2026,15 +2094,15 @@ Starter SQLite service for OBJX.
           contents: `create table if not exists projects (
   id integer primary key,
   name text not null,
-  tenantId text not null,
-  deletedAt text
+  tenant_id text not null,
+  deleted_at text
 );
 `,
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
           contents: `import { col, defineModel } from '@qbobjx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
+import { createSnakeCaseNamingPlugin, createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2046,6 +2114,7 @@ export const Project = defineModel({
     deletedAt: col.timestamp().nullable(),
   },
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createTenantScopePlugin(),
     createSoftDeletePlugin(),
   ],
@@ -2112,10 +2181,10 @@ export function createPostgresStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/postgres-driver': '0.1.0',
+                '@qbobjx/core': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/sql-engine': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/plugins': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/postgres-driver': TEMPLATE_PACKAGE_VERSION,
                 pg: '^8.0.0',
               },
             },
@@ -2148,15 +2217,15 @@ Starter PostgreSQL service for OBJX.
           contents: `create table if not exists projects (
   id integer generated always as identity primary key,
   name text not null,
-  tenantId text not null,
-  deletedAt timestamptz
+  tenant_id text not null,
+  deleted_at timestamptz
 );
 `,
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
           contents: `import { col, defineModel } from '@qbobjx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
+import { createSnakeCaseNamingPlugin, createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2168,6 +2237,7 @@ export const Project = defineModel({
     deletedAt: col.timestamp().nullable(),
   },
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createTenantScopePlugin(),
     createSoftDeletePlugin(),
   ],
@@ -2244,10 +2314,10 @@ export function createMySqlStarterTemplate(
                 dev: 'node src/app.mjs',
               },
               dependencies: {
-                '@qbobjx/core': '0.1.0',
-                '@qbobjx/sql-engine': '0.1.0',
-                '@qbobjx/plugins': '0.1.0',
-                '@qbobjx/mysql-driver': '0.1.0',
+                '@qbobjx/core': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/sql-engine': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/plugins': TEMPLATE_PACKAGE_VERSION,
+                '@qbobjx/mysql-driver': TEMPLATE_PACKAGE_VERSION,
                 mysql2: '^3.0.0',
               },
             },
@@ -2280,15 +2350,15 @@ Starter MySQL service for OBJX.
           contents: `create table if not exists projects (
   id integer not null auto_increment primary key,
   name varchar(255) not null,
-  tenantId varchar(255) not null,
-  deletedAt datetime(3) null
+  tenant_id varchar(255) not null,
+  deleted_at datetime(3) null
 );
 `,
         },
         {
           path: path.posix.join(outDir, 'src/models.mjs'),
           contents: `import { col, defineModel } from '@qbobjx/core';
-import { createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
+import { createSnakeCaseNamingPlugin, createSoftDeletePlugin, createTenantScopePlugin } from '@qbobjx/plugins';
 
 export const Project = defineModel({
   name: 'Project',
@@ -2300,6 +2370,7 @@ export const Project = defineModel({
     deletedAt: col.timestamp().nullable(),
   },
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createTenantScopePlugin(),
     createSoftDeletePlugin(),
   ],
@@ -2369,29 +2440,29 @@ export function createMigrationSeedSchemasTemplate(
       ? `create table if not exists projects (
       id integer generated always as identity primary key,
       name text not null,
-      tenantId text not null
+      tenant_id text not null
     );`
       : dialect === 'mysql'
         ? `create table if not exists projects (
       id integer not null auto_increment primary key,
       name varchar(255) not null,
-      tenantId varchar(255) not null
+      tenant_id varchar(255) not null
     );`
         : `create table if not exists projects (
       id integer primary key,
       name text not null,
-      tenantId text not null
+      tenant_id text not null
     );`;
   const seedSql =
     dialect === 'sqlite3'
-      ? `insert into projects (id, name, tenantId)
+      ? `insert into projects (id, name, tenant_id)
      values (1, 'OBJX Alpha', 'tenant_a');`
-      : `insert into projects (name, tenantId)
+      : `insert into projects (name, tenant_id)
      values ('OBJX Alpha', 'tenant_a');`;
   const revertSql =
     dialect === 'sqlite3'
       ? "delete from projects where id = 1;"
-      : "delete from projects where name = 'OBJX Alpha' and tenantId = 'tenant_a';";
+      : "delete from projects where name = 'OBJX Alpha' and tenant_id = 'tenant_a';";
 
   return defineTemplate({
     name: 'migration-seed-schemas',

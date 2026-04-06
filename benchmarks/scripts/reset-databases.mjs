@@ -113,8 +113,7 @@ async function seedMySql(connection, seedRows) {
   }
 }
 
-async function main() {
-  const config = parseBenchmarkArgs(process.argv.slice(2));
+export async function resetDatabases(config) {
   applyDefaultDatabaseEnvironment(config);
   const schemaPostgres = await readFile(path.join(rootDir, 'schema', 'postgres.sql'), 'utf8');
   const schemaMySql = await readFile(path.join(rootDir, 'schema', 'mysql.sql'), 'utf8');
@@ -149,7 +148,18 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+async function main() {
+  const config = parseBenchmarkArgs(process.argv.slice(2));
+  await resetDatabases(config);
+}
+
+const isEntryPoint = process.argv[1]
+  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+
+if (isEntryPoint) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

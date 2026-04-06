@@ -3,6 +3,8 @@ import {
   Sequelize,
 } from 'sequelize';
 
+const TX_ROLLBACK_SENTINEL = 'objx-benchmark-rollback';
+
 function resolveSequelizeConfig(dialect, config) {
   if (dialect === 'postgres') {
     return {
@@ -166,6 +168,22 @@ export async function createSequelizeAdapter(dialect, config) {
           },
         );
       });
+    },
+    transactionBeginCommit() {
+      return sequelize.transaction(async () => undefined);
+    },
+    async transactionBeginRollback() {
+      try {
+        await sequelize.transaction(async () => {
+          throw new Error(TX_ROLLBACK_SENTINEL);
+        });
+      } catch (error) {
+        if (error?.message === TX_ROLLBACK_SENTINEL) {
+          return;
+        }
+
+        throw error;
+      }
     },
   };
 }

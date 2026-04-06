@@ -27,6 +27,7 @@ export function createTimestampsPlugin(
 }
 
 export interface SnakeCaseNamingPluginOptions {
+  readonly table?: boolean | string;
   readonly exclude?: readonly string[];
   readonly overrides?: Readonly<Record<string, string>>;
 }
@@ -42,6 +43,7 @@ function toSnakeCase(value: string): string {
 export function createSnakeCaseNamingPlugin(
   options: SnakeCaseNamingPluginOptions = {},
 ): Readonly<ObjxPlugin> {
+  const tableOption = options.table ?? false;
   const excluded = new Set(options.exclude ?? []);
   const overrides = options.overrides ?? {};
 
@@ -49,6 +51,12 @@ export function createSnakeCaseNamingPlugin(
     name: 'snake-case-naming',
     hooks: {
       onModelDefine(context) {
+        if (tableOption) {
+          context.setTableDbName(
+            typeof tableOption === 'string' ? tableOption : toSnakeCase(context.table),
+          );
+        }
+
         for (const columnKey of Object.keys(context.columnDefinitions)) {
           if (excluded.has(columnKey)) {
             continue;
@@ -220,7 +228,7 @@ export function createAuditTrailPlugin(
         } = {
           at: new Date(),
           model: context.model.name,
-          table: context.model.table,
+          table: context.model.dbTable,
           operation: context.queryKind,
           actorKey: metadata.actorKey,
         };

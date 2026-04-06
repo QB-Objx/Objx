@@ -55,6 +55,7 @@
             <ul class="hero-pills" aria-label="Highlights">
               <li>Typed models with <code>defineModel</code></li>
               <li><code>createSnakeCaseNamingPlugin()</code> for camelCase over snake_case schemas</li>
+              <li><code>createSnakeCaseNamingStrategy()</code> for session-wide physical naming</li>
               <li>Embedded SQL compiler and runtime</li>
               <li><code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
               <li>Plugins for tenant scope, soft delete, audit trail, timestamps</li>
@@ -151,6 +152,7 @@
               <li><code>.default(value)</code> and <code>.default(() =&gt; value)</code></li>
               <li><code>.generated()</code> for runtime-populated fields like tenant ids and graph-owned foreign keys</li>
               <li><code>createSnakeCaseNamingPlugin()</code> remaps physical columns during model definition</li>
+              <li><code>createSnakeCaseNamingStrategy()</code> keeps physical naming configurable per session</li>
               <li><code>belongsToOne</code>, <code>hasOne</code>, <code>hasMany</code>, <code>manyToMany</code></li>
             </ul>
           </div>

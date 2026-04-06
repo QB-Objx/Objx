@@ -1,0 +1,250 @@
+[
+  {
+    "generatedAt": "2026-04-06T13:38:27.507Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "warmup": 1,
+      "iterations": 2,
+      "dialects": [
+        "postgres",
+        "mysql"
+      ],
+      "orms": [
+        "objx"
+      ]
+    },
+    "results": [
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.704,
+        "avgMs": 2.35225,
+        "opsPerSec": 425.12
+      },
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.243,
+        "avgMs": 1.62155,
+        "opsPerSec": 616.69
+      },
+      {
+        "orm": "objx",
+        "dialect": "mysql",
+        "adapter": "objx-mysql",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.689,
+        "avgMs": 1.84455,
+        "opsPerSec": 542.14
+      },
+      {
+        "orm": "objx",
+        "dialect": "mysql",
+        "adapter": "objx-mysql",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.596,
+        "avgMs": 1.79785,
+        "opsPerSec": 556.22
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T14:35:27.756Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "warmup": 1,
+      "iterations": 2,
+      "dialects": [
+        "postgres",
+        "mysql"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "prisma"
+      ]
+    },
+    "results": [
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.604,
+        "avgMs": 2.30215,
+        "opsPerSec": 434.38
+      },
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.092,
+        "avgMs": 2.0458,
+        "opsPerSec": 488.81
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.509,
+        "avgMs": 2.25435,
+        "opsPerSec": 443.59
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.299,
+        "avgMs": 2.14945,
+        "opsPerSec": 465.24
+      },
+      {
+        "orm": "prisma",
+        "dialect": "postgres",
+        "adapter": "prisma-postgres",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 5.57,
+        "avgMs": 2.785,
+        "opsPerSec": 359.07
+      },
+      {
+        "orm": "prisma",
+        "dialect": "postgres",
+        "adapter": "prisma-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.638,
+        "avgMs": 1.819,
+        "opsPerSec": 549.75
+      },
+      {
+        "orm": "objx",
+        "dialect": "mysql",
+        "adapter": "objx-mysql",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.543,
+        "avgMs": 1.77145,
+        "opsPerSec": 564.51
+      },
+      {
+        "orm": "objx",
+        "dialect": "mysql",
+        "adapter": "objx-mysql",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 5.402,
+        "avgMs": 2.701,
+        "opsPerSec": 370.23
+      },
+      {
+        "orm": "knex",
+        "dialect": "mysql",
+        "adapter": "knex-mysql",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 5.251,
+        "avgMs": 2.62575,
+        "opsPerSec": 380.84
+      },
+      {
+        "orm": "knex",
+        "dialect": "mysql",
+        "adapter": "knex-mysql",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 3.954,
+        "avgMs": 1.97685,
+        "opsPerSec": 505.86
+      },
+      {
+        "orm": "prisma",
+        "dialect": "mysql",
+        "adapter": "prisma-mysql",
+        "scenario": "begin-commit",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.118,
+        "avgMs": 2.0591,
+        "opsPerSec": 485.65
+      },
+      {
+        "orm": "prisma",
+        "dialect": "mysql",
+        "adapter": "prisma-mysql",
+        "scenario": "begin-rollback",
+        "iterations": 2,
+        "warmup": 1,
+        "totalMs": 4.252,
+        "avgMs": 2.12625,
+        "opsPerSec": 470.31
+      }
+    ]
+  }
+]

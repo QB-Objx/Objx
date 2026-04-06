@@ -10,6 +10,8 @@ function resolveClientModulePath(dialect) {
   throw new Error(`Prisma adapter does not support dialect "${dialect}".`);
 }
 
+const TX_ROLLBACK_SENTINEL = 'objx-benchmark-rollback';
+
 export async function createPrismaAdapter(dialect) {
   let PrismaClient;
 
@@ -102,6 +104,22 @@ export async function createPrismaAdapter(dialect) {
           },
         });
       });
+    },
+    transactionBeginCommit() {
+      return prisma.$transaction(async () => undefined);
+    },
+    async transactionBeginRollback() {
+      try {
+        await prisma.$transaction(async () => {
+          throw new Error(TX_ROLLBACK_SENTINEL);
+        });
+      } catch (error) {
+        if (error?.message === TX_ROLLBACK_SENTINEL) {
+          return;
+        }
+
+        throw error;
+      }
     },
   };
 }

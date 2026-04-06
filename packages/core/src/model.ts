@@ -98,6 +98,7 @@ export interface ModelDefinition<
   readonly id: string;
   readonly name: string;
   readonly table: string;
+  readonly dbTable: string;
   readonly columnDefinitions: TColumns;
   readonly columns: ModelColumnReferenceMap<TColumns, ModelDefinition<TColumns, TRelations>>;
   readonly relations: TRelations;
@@ -169,6 +170,7 @@ export interface ModelDefinitionConfig<
 > {
   readonly name?: string;
   readonly table: string;
+  readonly dbTable?: string;
   readonly columns: TColumnsInput;
   readonly relations?: (
     model: ModelDefinition<ResolveColumns<TColumnsInput>, EmptyModelRelations>,
@@ -193,18 +195,36 @@ function withColumnDbName<TColumn extends AnyColumnDefinition>(
 function applyModelDefinePlugins(
   modelName: string,
   table: string,
+  dbTable: string,
   columns: Record<string, AnyColumnDefinition>,
   plugins: readonly ObjxPlugin[],
-): Record<string, AnyColumnDefinition> {
+) {
   if (plugins.length === 0) {
-    return columns;
+    return {
+      dbTable,
+      columns,
+    };
   }
 
   const dbNameOverrides = new Map<string, string>();
+  let resolvedDbTable = dbTable;
   const context: ModelDefinePluginContext = {
     modelName,
     table,
+    dbTable,
     columnDefinitions: columns,
+    setTableDbName(nextDbTable) {
+      const normalizedDbTable = nextDbTable.trim();
+
+      if (!normalizedDbTable) {
+        throw new Error(`Model "${modelName}" cannot map to an empty database table name.`);
+      }
+
+      resolvedDbTable = normalizedDbTable;
+    },
+    getTableDbName() {
+      return resolvedDbTable;
+    },
     setColumnDbName(columnKey, dbName) {
       if (!(columnKey in columns)) {
         throw new Error(
@@ -239,7 +259,10 @@ function applyModelDefinePlugins(
   }
 
   if (dbNameOverrides.size === 0) {
-    return columns;
+    return {
+      dbTable: resolvedDbTable,
+      columns,
+    };
   }
 
   const nextColumns: Record<string, AnyColumnDefinition> = {};
@@ -249,7 +272,10 @@ function applyModelDefinePlugins(
     nextColumns[columnKey] = dbName ? withColumnDbName(definition, dbName) : definition;
   }
 
-  return nextColumns;
+  return {
+    dbTable: resolvedDbTable,
+    columns: nextColumns,
+  };
 }
 
 function createColumnReference<
@@ -265,10 +291,10 @@ function createColumnReference<
     kind: 'objx:column-ref',
     model,
     key,
-    table: model.table,
+    table: model.dbTable,
     definition,
     toString() {
-      return `${model.table}.${key}`;
+      return `${model.dbTable}.${key}`;
     },
   });
 }
@@ -327,18 +353,21 @@ export function defineModel<
   const initialColumns = Object.fromEntries(
     Object.entries(config.columns).map(([key, value]) => [key, resolveColumnInput(value)]),
   ) as ResolveColumns<TColumnsInput>;
-  const resolvedColumns = applyModelDefinePlugins(
+  const resolvedModelShape = applyModelDefinePlugins(
     config.name ?? config.table,
     config.table,
+    config.dbTable ?? config.table,
     initialColumns as Record<string, AnyColumnDefinition>,
     config.plugins ?? [],
-  ) as ResolveColumns<TColumnsInput>;
+  );
+  const resolvedColumns = resolvedModelShape.columns as ResolveColumns<TColumnsInput>;
 
   const modelShell = {
     kind: 'objx:model' as const,
     id: createInternalId('model'),
     name: config.name ?? config.table,
     table: config.table,
+    dbTable: resolvedModelShape.dbTable,
     columnDefinitions: resolvedColumns,
     columns: {} as ModelColumnReferenceMap<ResolveColumns<TColumnsInput>, AnyModelDefinition>,
     relations: {} as TRelations,

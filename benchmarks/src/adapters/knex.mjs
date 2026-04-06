@@ -4,6 +4,8 @@ function createClientName(dialect) {
   return dialect === 'postgres' ? 'pg' : 'mysql2';
 }
 
+const TX_ROLLBACK_SENTINEL = 'objx-benchmark-rollback';
+
 export async function createKnexAdapter(dialect, config) {
   const knex = knexFactory({
     client: createClientName(dialect),
@@ -53,6 +55,22 @@ export async function createKnexAdapter(dialect, config) {
         await trx('pets').where({ owner_id: id }).count({ count: '*' }).first();
         return trx('people').where({ id }).update({ active });
       });
+    },
+    transactionBeginCommit() {
+      return knex.transaction(async () => undefined);
+    },
+    async transactionBeginRollback() {
+      try {
+        await knex.transaction(async () => {
+          throw new Error(TX_ROLLBACK_SENTINEL);
+        });
+      } catch (error) {
+        if (error?.message === TX_ROLLBACK_SENTINEL) {
+          return;
+        }
+
+        throw error;
+      }
     },
   };
 }

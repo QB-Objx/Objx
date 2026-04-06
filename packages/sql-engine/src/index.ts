@@ -99,6 +99,19 @@ export interface SqlResultNormalizer {
   ): SqlResultSet;
 }
 
+export function isSqlResultSet(
+  value: unknown,
+): value is SqlResultSet<Record<string, unknown>> {
+  return (
+    isRecord(value) &&
+    'rows' in value &&
+    Array.isArray(value.rows) &&
+    'rowCount' in value &&
+    typeof value.rowCount === 'number' &&
+    'raw' in value
+  );
+}
+
 export interface SqlDriver<TTransaction = unknown> {
   execute<TResult = unknown>(
     compiledQuery: CompiledQuery,
@@ -279,6 +292,10 @@ export class DefaultSqlResultNormalizer implements SqlResultNormalizer {
   ): SqlResultSet {
     void context;
 
+    if (isSqlResultSet(result)) {
+      return result;
+    }
+
     if (isRowArray(result)) {
       return {
         rows: result,
@@ -347,6 +364,14 @@ function uniqueNonNullableValues(values: readonly unknown[]): readonly unknown[]
   }
 
   return [...unique];
+}
+
+function toRelationMatchKey(value: unknown): string | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  return typeof value === 'string' ? value : String(value);
 }
 
 type EagerRelationTree = Map<string, EagerRelationTree>;
@@ -495,6 +520,43 @@ export type BuiltinSqlDialectName =
 
 export type SqlDialectInput = SqlDialect | BuiltinSqlDialectName | string;
 
+export interface ObjxNamingStrategyContext {
+  readonly model?: AnyModelDefinition;
+  readonly columnDefinition?: AnyColumnDefinition;
+}
+
+export interface ObjxNamingStrategy {
+  table?(tableName: string, context: ObjxNamingStrategyContext): string;
+  column?(columnName: string, context: ObjxNamingStrategyContext): string;
+}
+
+export interface SnakeCaseNamingStrategyOptions {
+  readonly table?: boolean;
+}
+
+function toSnakeCase(value: string): string {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z0-9])/g, '$1_$2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/[-\s]+/g, '_')
+    .toLowerCase();
+}
+
+export function createSnakeCaseNamingStrategy(
+  options: SnakeCaseNamingStrategyOptions = {},
+): ObjxNamingStrategy {
+  const mapTable = options.table ?? true;
+
+  return {
+    table(tableName) {
+      return mapTable ? toSnakeCase(tableName) : tableName;
+    },
+    column(columnName) {
+      return toSnakeCase(columnName);
+    },
+  };
+}
+
 function quoteWith(identifier: string, open: string, close: string): string {
   return `${open}${identifier.replaceAll(close, `${close}${close}`)}${close}`;
 }
@@ -601,6 +663,8 @@ export function listBuiltinSqlDialects(): readonly BuiltinSqlDialectName[] {
 
 export interface ObjxSqlCompilerOptions {
   readonly dialect?: SqlDialectInput;
+  readonly compileCacheSize?: number;
+  readonly namingStrategy?: ObjxNamingStrategy;
 }
 
 class CompilationContext {
@@ -627,13 +691,29 @@ class CompilationContext {
 
 export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   readonly #dialect: SqlDialect;
+  readonly #compileCache = new Map<string, Omit<CompiledQuery, 'parameters'>>();
+  readonly #compileCacheSize: number;
+  readonly #namingStrategy: ObjxNamingStrategy | undefined;
 
   constructor(options: ObjxSqlCompilerOptions = {}) {
     this.#dialect = resolveSqlDialect(options.dialect ?? ansiDialect);
+    this.#compileCacheSize = Math.max(0, options.compileCacheSize ?? 512);
+    this.#namingStrategy = options.namingStrategy;
   }
 
   compile(ast: QueryNode | AnyQueryBuilder): CompiledQuery {
     const queryNode = resolveQueryNode(ast);
+    const cacheKey = this.#buildQueryCacheKey(queryNode);
+    const cached = this.#compileCache.get(cacheKey);
+
+    if (cached) {
+      return {
+        sql: cached.sql,
+        metadata: cached.metadata,
+        parameters: this.#collectQueryParameters(queryNode),
+      };
+    }
+
     const context = new CompilationContext(this.#dialect);
     let sql: string;
 
@@ -652,22 +732,35 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
         break;
     }
 
-    return {
+    const compiledQuery = {
       sql,
       parameters: context.parameters,
       metadata: {
         dialect: this.#dialect.name,
         queryKind: queryNode.kind,
-        table: queryNode.model.table,
+        table: this.#resolveModelTableName(queryNode.model),
       },
     };
+
+    this.#cacheCompiledQuery(cacheKey, compiledQuery);
+    return compiledQuery;
   }
 
   compileRaw(fragment: RawSqlFragment): CompiledQuery {
+    const cacheKey = this.#buildRawCacheKey(fragment);
+    const cached = this.#compileCache.get(cacheKey);
+
+    if (cached) {
+      return {
+        sql: cached.sql,
+        metadata: cached.metadata,
+        parameters: this.#collectRawParameters(fragment),
+      };
+    }
+
     const context = new CompilationContext(this.#dialect);
     const sql = this.#compileRawFragment(fragment, context);
-
-    return {
+    const compiledQuery = {
       sql,
       parameters: context.parameters,
       metadata: {
@@ -675,6 +768,311 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
         queryKind: 'raw',
       },
     };
+
+    this.#cacheCompiledQuery(cacheKey, compiledQuery);
+    return compiledQuery;
+  }
+
+  #cacheCompiledQuery(cacheKey: string, compiledQuery: CompiledQuery): void {
+    if (this.#compileCacheSize <= 0) {
+      return;
+    }
+
+    if (this.#compileCache.size >= this.#compileCacheSize) {
+      const oldestKey = this.#compileCache.keys().next().value;
+
+      if (typeof oldestKey === 'string') {
+        this.#compileCache.delete(oldestKey);
+      }
+    }
+
+    this.#compileCache.set(cacheKey, {
+      sql: compiledQuery.sql,
+      metadata: compiledQuery.metadata,
+    });
+  }
+
+  #buildQueryCacheKey(queryNode: QueryNode): string {
+    switch (queryNode.kind) {
+      case 'select':
+        return [
+          'select',
+          this.#resolveModelTableName(queryNode.model),
+          queryNode.selections.map((selection) => this.#selectionCacheKey(selection)).join(','),
+          queryNode.joins.map((join) => this.#joinCacheKey(join)).join(','),
+          queryNode.predicates.map((predicate) => this.#predicateCacheKey(predicate)).join(','),
+          queryNode.orderBy
+            .map((entry) => `${this.#columnCacheKey(entry.column)}:${entry.direction}`)
+            .join(','),
+          queryNode.limit === undefined ? 'nolimit' : 'limit',
+          queryNode.offset === undefined ? 'nooffset' : 'offset',
+        ].join('|');
+      case 'insert': {
+        const orderedColumns = this.#orderedInsertColumns(queryNode);
+        const rowShape = queryNode.rows
+          .map((row) =>
+            orderedColumns
+              .map((columnName) => (Object.prototype.hasOwnProperty.call(row, columnName) ? '1' : '0'))
+              .join(''),
+          )
+          .join(',');
+
+        return [
+          'insert',
+          this.#resolveModelTableName(queryNode.model),
+          orderedColumns.join(','),
+          rowShape,
+          queryNode.returning.map((selection) => this.#selectionCacheKey(selection)).join(','),
+        ].join('|');
+      }
+      case 'update':
+        return [
+          'update',
+          this.#resolveModelTableName(queryNode.model),
+          this.#orderedUpdateColumns(queryNode).join(','),
+          queryNode.predicates.map((predicate) => this.#predicateCacheKey(predicate)).join(','),
+          queryNode.returning.map((selection) => this.#selectionCacheKey(selection)).join(','),
+        ].join('|');
+      case 'delete':
+        return [
+          'delete',
+          this.#resolveModelTableName(queryNode.model),
+          queryNode.predicates.map((predicate) => this.#predicateCacheKey(predicate)).join(','),
+          queryNode.returning.map((selection) => this.#selectionCacheKey(selection)).join(','),
+        ].join('|');
+    }
+  }
+
+  #buildRawCacheKey(fragment: RawSqlFragment): string {
+    return `raw|${fragment.strings.join('\u241f')}|${fragment.values
+      .map((value) => this.#rawValueCacheKey(value))
+      .join('|')}`;
+  }
+
+  #selectionCacheKey(selection: SelectionNode): string {
+    return `${this.#columnCacheKey(selection.column)}:${selection.alias ?? ''}`;
+  }
+
+  #joinCacheKey(join: JoinNode): string {
+    return `${join.joinType}:${join.table}:${join.conditions
+      .map((condition) => `${this.#expressionCacheKey(condition.left)}=${this.#expressionCacheKey(condition.right)}`)
+      .join(',')}`;
+  }
+
+  #predicateCacheKey(predicate: PredicateNode): string {
+    if (predicate.kind === 'logical-predicate') {
+      return `logical:${predicate.operator}:${predicate.predicates
+        .map((item) => this.#predicateCacheKey(item))
+        .join(',')}`;
+    }
+
+    if (predicate.operator === 'is null' || predicate.operator === 'is not null') {
+      return `predicate:${predicate.operator}:${this.#expressionCacheKey(predicate.left)}`;
+    }
+
+    if (predicate.operator === 'in') {
+      const values = Array.isArray(predicate.right) ? predicate.right : [];
+      return `predicate:in:${this.#expressionCacheKey(predicate.left)}:${values
+        .map((value) => this.#expressionCacheKey(value))
+        .join(',')}`;
+    }
+
+    return `predicate:${predicate.operator}:${this.#expressionCacheKey(predicate.left)}:${this.#expressionCacheKey(
+      predicate.right as ColumnExpressionNode | ValueExpressionNode,
+    )}`;
+  }
+
+  #expressionCacheKey(expression: ColumnExpressionNode | ValueExpressionNode): string {
+    if (expression.kind === 'column') {
+      return this.#columnCacheKey(expression.column);
+    }
+
+    return 'value';
+  }
+
+  #columnCacheKey(column: AnyModelColumnReference): string {
+    return `${column.table}.${this.#resolveColumnReferenceName(column)}`;
+  }
+
+  #rawValueCacheKey(value: unknown): string {
+    if (isRawSqlFragment(value)) {
+      return this.#buildRawCacheKey(value);
+    }
+
+    if (isRawSqlIdentifier(value)) {
+      return `identifier:${value.path.join('.')}`;
+    }
+
+    if (isRawSqlReference(value)) {
+      return `reference:${value.value}`;
+    }
+
+    if (isColumnReference(value)) {
+      return `column:${this.#columnCacheKey(value)}`;
+    }
+
+    return 'value';
+  }
+
+  #collectQueryParameters(queryNode: QueryNode): readonly SqlParameter[] {
+    switch (queryNode.kind) {
+      case 'select': {
+        const parameters: SqlParameter[] = [];
+
+        for (const predicate of queryNode.predicates) {
+          this.#collectPredicateParameters(predicate, parameters);
+        }
+
+        if (queryNode.limit !== undefined) {
+          parameters.push({
+            value: queryNode.limit,
+            typeHint: 'limit',
+          });
+        }
+
+        if (queryNode.offset !== undefined) {
+          parameters.push({
+            value: queryNode.offset,
+            typeHint: 'offset',
+          });
+        }
+
+        return parameters;
+      }
+      case 'insert': {
+        const parameters: SqlParameter[] = [];
+        const orderedColumns = this.#orderedInsertColumns(queryNode);
+
+        for (const row of queryNode.rows) {
+          for (const columnName of orderedColumns) {
+            if (!Object.prototype.hasOwnProperty.call(row, columnName)) {
+              continue;
+            }
+
+            parameters.push({
+              value: row[columnName],
+              typeHint: columnName,
+            });
+          }
+        }
+
+        return parameters;
+      }
+      case 'update': {
+        const parameters: SqlParameter[] = [];
+
+        for (const columnName of this.#orderedUpdateColumns(queryNode)) {
+          parameters.push({
+            value: queryNode.values[columnName],
+            typeHint: columnName,
+          });
+        }
+
+        for (const predicate of queryNode.predicates) {
+          this.#collectPredicateParameters(predicate, parameters);
+        }
+
+        return parameters;
+      }
+      case 'delete': {
+        const parameters: SqlParameter[] = [];
+
+        for (const predicate of queryNode.predicates) {
+          this.#collectPredicateParameters(predicate, parameters);
+        }
+
+        return parameters;
+      }
+    }
+  }
+
+  #collectPredicateParameters(
+    predicate: PredicateNode,
+    parameters: SqlParameter[],
+  ): void {
+    if (predicate.kind === 'logical-predicate') {
+      for (const item of predicate.predicates) {
+        this.#collectPredicateParameters(item, parameters);
+      }
+
+      return;
+    }
+
+    this.#collectExpressionParameters(predicate.left, parameters);
+
+    if (predicate.operator === 'is null' || predicate.operator === 'is not null') {
+      return;
+    }
+
+    if (predicate.operator === 'in') {
+      const values = Array.isArray(predicate.right) ? predicate.right : [];
+
+      for (const value of values) {
+        this.#collectExpressionParameters(value, parameters);
+      }
+
+      return;
+    }
+
+    if (predicate.right && !Array.isArray(predicate.right)) {
+      this.#collectExpressionParameters(
+        predicate.right as ColumnExpressionNode | ValueExpressionNode,
+        parameters,
+      );
+    }
+  }
+
+  #collectExpressionParameters(
+    expression: ColumnExpressionNode | ValueExpressionNode,
+    parameters: SqlParameter[],
+  ): void {
+    if (expression.kind !== 'value') {
+      return;
+    }
+
+    parameters.push({
+      value: expression.value,
+    });
+  }
+
+  #collectRawParameters(fragment: RawSqlFragment): readonly SqlParameter[] {
+    const parameters: SqlParameter[] = [];
+
+    for (const value of fragment.values) {
+      this.#collectRawValueParameters(value, parameters);
+    }
+
+    return parameters;
+  }
+
+  #collectRawValueParameters(value: unknown, parameters: SqlParameter[]): void {
+    if (isRawSqlFragment(value)) {
+      for (const nestedValue of value.values) {
+        this.#collectRawValueParameters(nestedValue, parameters);
+      }
+
+      return;
+    }
+
+    if (isRawSqlIdentifier(value) || isRawSqlReference(value) || isColumnReference(value)) {
+      return;
+    }
+
+    parameters.push({
+      value,
+    });
+  }
+
+  #orderedInsertColumns(ast: InsertQueryNode): readonly string[] {
+    return Object.keys(ast.model.columnDefinitions).filter((columnName) =>
+      ast.rows.some((row) => Object.prototype.hasOwnProperty.call(row, columnName)),
+    );
+  }
+
+  #orderedUpdateColumns(ast: UpdateQueryNode): readonly string[] {
+    return Object.keys(ast.model.columnDefinitions).filter((columnName) =>
+      Object.prototype.hasOwnProperty.call(ast.values, columnName),
+    );
   }
 
   #compileSelect(ast: SelectQueryNode, context: CompilationContext): string {
@@ -684,14 +1082,14 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
         : Object.keys(ast.model.columnDefinitions)
             .map((columnName) => {
               const dbColumnName = this.#resolveModelColumnName(ast.model, columnName);
-              return `${this.#columnReference(ast.model.table, dbColumnName, context)} as ${this.#quote(
+              return `${this.#columnReference(this.#resolveModelTableName(ast.model), dbColumnName, context)} as ${this.#quote(
                 columnName,
                 context,
               )}`;
             })
             .join(', ');
 
-    let sql = `select ${selections} from ${this.#quote(ast.model.table, context)}`;
+    let sql = `select ${selections} from ${this.#quote(this.#resolveModelTableName(ast.model), context)}`;
 
     if (ast.joins.length > 0) {
       sql += ` ${ast.joins.map((join) => this.#compileJoin(join, context)).join(' ')}`;
@@ -721,12 +1119,10 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileInsert(ast: InsertQueryNode, context: CompilationContext): string {
-    const orderedColumns = Object.keys(ast.model.columnDefinitions).filter((columnName) =>
-      ast.rows.some((row) => Object.prototype.hasOwnProperty.call(row, columnName)),
-    );
+    const orderedColumns = this.#orderedInsertColumns(ast);
 
     if (orderedColumns.length === 0) {
-      return `insert into ${this.#quote(ast.model.table, context)} default values`;
+      return `insert into ${this.#quote(this.#resolveModelTableName(ast.model), context)} default values`;
     }
 
     const columnsSql = orderedColumns
@@ -746,7 +1142,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       })
       .join(', ');
 
-    let sql = `insert into ${this.#quote(ast.model.table, context)} (${columnsSql}) values ${rowsSql}`;
+    let sql = `insert into ${this.#quote(this.#resolveModelTableName(ast.model), context)} (${columnsSql}) values ${rowsSql}`;
 
     if (ast.returning.length > 0 && this.#dialect.supportsReturning) {
       sql += ` returning ${ast.returning
@@ -758,9 +1154,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileUpdate(ast: UpdateQueryNode, context: CompilationContext): string {
-    const orderedColumns = Object.keys(ast.model.columnDefinitions).filter((columnName) =>
-      Object.prototype.hasOwnProperty.call(ast.values, columnName),
-    );
+    const orderedColumns = this.#orderedUpdateColumns(ast);
 
     if (orderedColumns.length === 0) {
       throw new ObjxSqlEngineError('Cannot compile update query without values.');
@@ -774,7 +1168,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       })
       .join(', ');
 
-    let sql = `update ${this.#quote(ast.model.table, context)} set ${assignmentsSql}`;
+    let sql = `update ${this.#quote(this.#resolveModelTableName(ast.model), context)} set ${assignmentsSql}`;
 
     if (ast.predicates.length > 0) {
       sql += ` where ${ast.predicates
@@ -792,7 +1186,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileDelete(ast: DeleteQueryNode, context: CompilationContext): string {
-    let sql = `delete from ${this.#quote(ast.model.table, context)}`;
+    let sql = `delete from ${this.#quote(this.#resolveModelTableName(ast.model), context)}`;
 
     if (ast.predicates.length > 0) {
       sql += ` where ${ast.predicates
@@ -863,7 +1257,7 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       })
       .join(' and ');
 
-    return `${this.#joinKeyword(join.joinType)} ${this.#quote(join.table, context)} on ${conditionsSql}`;
+    return `${this.#joinKeyword(join.joinType)} ${this.#quote(this.#resolveTableName(join.table), context)} on ${conditionsSql}`;
   }
 
   #compilePredicate(predicate: PredicateNode, context: CompilationContext): string {
@@ -916,7 +1310,11 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileColumn(column: AnyModelColumnReference, context: CompilationContext): string {
-    return this.#columnReference(column.table, this.#resolveColumnReferenceName(column), context);
+    return this.#columnReference(
+      this.#resolveColumnReferenceTableName(column),
+      this.#resolveColumnReferenceName(column),
+      context,
+    );
   }
 
   #resolveSelectionAlias(selection: SelectionNode): string | undefined {
@@ -930,21 +1328,54 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #resolveColumnReferenceName(column: AnyModelColumnReference): string {
-    return this.#resolveDbColumnName(column.key, column.definition);
+    return this.#resolveDbColumnName(column.key, column.definition, column.model);
+  }
+
+  #resolveColumnReferenceTableName(column: AnyModelColumnReference): string {
+    return this.#resolveModelTableName(column.model);
   }
 
   #resolveModelColumnName(model: AnyModelDefinition, columnKey: string): string {
     const definition = (model.columnDefinitions as Record<string, AnyColumnDefinition>)[columnKey];
-    return this.#resolveDbColumnName(columnKey, definition);
+    return this.#resolveDbColumnName(columnKey, definition, model);
+  }
+
+  #resolveModelTableName(model: AnyModelDefinition): string {
+    return this.#resolveTableName(model.table, model);
+  }
+
+  #resolveTableName(tableName: string, model?: AnyModelDefinition): string {
+    if (model && model.dbTable !== model.table) {
+      return model.dbTable;
+    }
+
+    const resolved = this.#namingStrategy?.table?.(tableName, {
+      ...(model ? { model } : {}),
+    });
+
+    return typeof resolved === 'string' && resolved.trim().length > 0
+      ? resolved
+      : model?.dbTable ?? tableName;
   }
 
   #resolveDbColumnName(
     columnKey: string,
     definition: AnyColumnDefinition | undefined,
+    model?: AnyModelDefinition,
   ): string {
     const configured = definition?.config.dbName;
-    return typeof configured === 'string' && configured.trim().length > 0
-      ? configured
+
+    if (typeof configured === 'string' && configured.trim().length > 0) {
+      return configured;
+    }
+
+    const resolved = this.#namingStrategy?.column?.(columnKey, {
+      ...(model ? { model } : {}),
+      ...(definition ? { columnDefinition: definition } : {}),
+    });
+
+    return typeof resolved === 'string' && resolved.trim().length > 0
+      ? resolved
       : columnKey;
   }
 
@@ -1017,6 +1448,7 @@ export function createObjxSqlCompiler(options?: ObjxSqlCompilerOptions): ObjxSql
 export interface ObjxSessionOptions<TTransaction = unknown> {
   readonly compiler?: SqlCompiler<QueryNode> & Partial<RawSqlCompiler>;
   readonly driver: SqlDriver<TTransaction>;
+  readonly namingStrategy?: ObjxNamingStrategy;
   readonly executionContextManager?: ExecutionContextManager;
   readonly observers?: readonly ObjxSessionObserver[];
   readonly plugins?: readonly ObjxPlugin[];
@@ -1076,10 +1508,14 @@ export class ObjxSession<TTransaction = unknown> {
   readonly #modelRegistrations = new Map<string, ModelPluginRegistration>();
   readonly #resultNormalizer: SqlResultNormalizer;
   readonly #hydrateByDefault: boolean | HydrationOptions;
+  readonly #namingStrategy: ObjxNamingStrategy | undefined;
 
   constructor(options: ObjxSessionOptions<TTransaction>) {
-    this.#compiler = options.compiler ?? new ObjxSqlCompiler();
+    this.#compiler = options.compiler ?? new ObjxSqlCompiler({
+      ...(options.namingStrategy ? { namingStrategy: options.namingStrategy } : {}),
+    });
     this.#driver = options.driver;
+    this.#namingStrategy = options.namingStrategy;
     this.#executionContextManager =
       options.executionContextManager ?? createExecutionContextManager();
     this.#observers = options.observers ?? [];
@@ -1284,7 +1720,7 @@ export class ObjxSession<TTransaction = unknown> {
     const result = await validation.adapter.validate<TValue>(schema, input, {
       operation,
       modelName: registration.model.name,
-      tableName: registration.model.table,
+      tableName: registration.model.dbTable,
     });
 
     if (result.success) {
@@ -1295,7 +1731,7 @@ export class ObjxSession<TTransaction = unknown> {
       `Validation failed for model "${registration.model.name}" during "${operation}" using ${validation.adapter.name}.`,
       {
         modelName: registration.model.name,
-        tableName: registration.model.table,
+        tableName: registration.model.dbTable,
         operation,
         adapterName: validation.adapter.name,
         issues: result.issues as readonly ValidationIssue[],
@@ -1542,8 +1978,12 @@ export class ObjxSession<TTransaction = unknown> {
     const registration = originalQueryNode
       ? this.#getModelRegistration(originalQueryNode.model)
       : undefined;
+    const plugins = registration?.plugins;
+    const hasPlugins = (plugins?.length ?? 0) > 0;
     const pluginContext =
-      registration && this.#createPluginContext(registration, executionContext, originalQueryNode);
+      registration && hasPlugins
+        ? this.#createPluginContext(registration, executionContext, originalQueryNode)
+        : undefined;
     const preparedQueryNode =
       originalQueryNode && registration
         ? this.#prepareStructuredQuery(originalQueryNode, registration, executionContext)
@@ -1570,35 +2010,32 @@ export class ObjxSession<TTransaction = unknown> {
         : queryNode
           ? this.#compiler.compile(queryNode)
           : this.compile(query);
-    const startedAt = new Date();
+    const hasObservers = this.#observers.length > 0;
+    const startedAt = hasObservers ? new Date() : undefined;
     const transaction =
       options.transaction ??
       (executionContext?.transaction?.raw as TTransaction | undefined);
+    const request =
+      executionContext || transaction !== undefined
+        ? {
+            ...(executionContext ? { executionContext } : {}),
+            ...(transaction !== undefined ? { transaction } : {}),
+          }
+        : undefined;
 
-    const request: {
-      executionContext?: ExecutionContext;
-      transaction?: TTransaction;
-    } = {};
-
-    if (executionContext) {
-      request.executionContext = executionContext;
+    if (registration && pluginContext && plugins) {
+      this.#pluginRuntime.emitQueryCreate(pluginContext, plugins);
+      this.#pluginRuntime.emitQueryBuild(pluginContext, plugins);
+      this.#pluginRuntime.emitQueryExecute(pluginContext, plugins);
     }
 
-    if (transaction !== undefined) {
-      request.transaction = transaction;
+    if (hasObservers && startedAt) {
+      await notifyObservers(this.#observers, (observer) => observer.onQueryStart, {
+        compiledQuery,
+        executionContext,
+        startedAt,
+      } satisfies ObjxQueryTraceEvent);
     }
-
-    if (registration && pluginContext) {
-      this.#pluginRuntime.emitQueryCreate(pluginContext, registration.plugins);
-      this.#pluginRuntime.emitQueryBuild(pluginContext, registration.plugins);
-      this.#pluginRuntime.emitQueryExecute(pluginContext, registration.plugins);
-    }
-
-    await notifyObservers(this.#observers, (observer) => observer.onQueryStart, {
-      compiledQuery,
-      executionContext,
-      startedAt,
-    } satisfies ObjxQueryTraceEvent);
 
     try {
       const rawResult = await this.#driver.execute(compiledQuery, request);
@@ -1608,36 +2045,42 @@ export class ObjxSession<TTransaction = unknown> {
       });
       const materializedResult = await this.#materializeResult(queryNode, normalizedResult, options);
       const result =
-        registration && pluginContext
-          ? this.#pluginRuntime.emitResult(pluginContext, materializedResult, registration.plugins)
+        registration && pluginContext && plugins
+          ? this.#pluginRuntime.emitResult(pluginContext, materializedResult, plugins)
           : materializedResult;
-      const finishedAt = new Date();
 
-      await notifyObservers(this.#observers, (observer) => observer.onQuerySuccess, {
-        compiledQuery,
-        executionContext,
-        startedAt,
-        finishedAt,
-        durationMs: finishedAt.getTime() - startedAt.getTime(),
-        result,
-      } satisfies ObjxQueryTraceEvent);
+      if (hasObservers && startedAt) {
+        const finishedAt = new Date();
+
+        await notifyObservers(this.#observers, (observer) => observer.onQuerySuccess, {
+          compiledQuery,
+          executionContext,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          result,
+        } satisfies ObjxQueryTraceEvent);
+      }
 
       return result;
     } catch (error) {
       const pluginError =
-        registration && pluginContext
-          ? this.#pluginRuntime.emitError(pluginContext, error, registration.plugins)
+        registration && pluginContext && plugins
+          ? this.#pluginRuntime.emitError(pluginContext, error, plugins)
           : error;
-      const finishedAt = new Date();
 
-      await notifyObservers(this.#observers, (observer) => observer.onQueryError, {
-        compiledQuery,
-        executionContext,
-        startedAt,
-        finishedAt,
-        durationMs: finishedAt.getTime() - startedAt.getTime(),
-        error: pluginError,
-      } satisfies ObjxQueryTraceEvent);
+      if (hasObservers && startedAt) {
+        const finishedAt = new Date();
+
+        await notifyObservers(this.#observers, (observer) => observer.onQueryError, {
+          compiledQuery,
+          executionContext,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          error: pluginError,
+        } satisfies ObjxQueryTraceEvent);
+      }
 
       const errorOptions: {
         compiledQuery: CompiledQuery;
@@ -1755,7 +2198,7 @@ export class ObjxSession<TTransaction = unknown> {
         if (relationValue === null) {
           this.#assertColumnNullable(
             relation.from,
-            `Cannot set relation "${relationName}" on model "${model.name}" to null because foreign key "${relation.from.table}.${relation.from.key}" is not nullable.`,
+            `Cannot set relation "${relationName}" on model "${model.name}" to null because foreign key "${this.#resolveSessionColumnReferenceTable(relation.from)}.${this.#resolveSessionColumnReferenceName(relation.from)}" is not nullable.`,
           );
           insertValues[relation.from.key] = null;
           relationResults[relationName] = null;
@@ -1851,7 +2294,7 @@ export class ObjxSession<TTransaction = unknown> {
               );
 
               await this.#insertJoinRow(
-                relation.through.from.table,
+                this.#resolveSessionColumnReferenceTable(relation.through.from),
                 this.#createJoinRow(
                   relation,
                   insertedRow,
@@ -1994,10 +2437,13 @@ export class ObjxSession<TTransaction = unknown> {
           let relatedCount = 0;
 
           for (const relatedId of ids) {
-            const inserted = await this.#ensureJoinRow(relation.through.from.table, {
-              [relation.through.from.key]: ownerId,
-              [relation.through.to.key]: relatedId,
-            });
+            const inserted = await this.#ensureJoinRow(
+              this.#resolveSessionColumnReferenceTable(relation.through.from),
+              {
+              [this.#resolveSessionColumnReferenceName(relation.through.from)]: ownerId,
+              [this.#resolveSessionColumnReferenceName(relation.through.to)]: relatedId,
+              },
+            );
 
             if (inserted) {
               relatedCount += 1;
@@ -2028,7 +2474,7 @@ export class ObjxSession<TTransaction = unknown> {
         case 'belongsToOne': {
           this.#assertColumnNullable(
             relation.from,
-            `Cannot unrelate "${relationName}" on model "${model.name}" because foreign key "${relation.from.table}.${relation.from.key}" is not nullable.`,
+            `Cannot unrelate "${relationName}" on model "${model.name}" because foreign key "${this.#resolveSessionColumnReferenceTable(relation.from)}.${this.#resolveSessionColumnReferenceName(relation.from)}" is not nullable.`,
           );
           let builder = model
             .update({
@@ -2049,7 +2495,7 @@ export class ObjxSession<TTransaction = unknown> {
           const targetPrimary = this.#getPrimaryColumn(targetModel);
           this.#assertColumnNullable(
             relation.to,
-            `Cannot unrelate "${relationName}" on model "${model.name}" because foreign key "${relation.to.table}.${relation.to.key}" is not nullable.`,
+            `Cannot unrelate "${relationName}" on model "${model.name}" because foreign key "${this.#resolveSessionColumnReferenceTable(relation.to)}.${this.#resolveSessionColumnReferenceName(relation.to)}" is not nullable.`,
           );
           let builder = targetModel
             .update({
@@ -2073,11 +2519,17 @@ export class ObjxSession<TTransaction = unknown> {
 
           const relatedPredicate =
             ids.length > 0
-              ? sql` and ${identifier(relation.through.from.table, relation.through.to.key)} in (${joinSql(ids)})`
+              ? sql` and ${identifier(
+                  this.#resolveSessionColumnReferenceTable(relation.through.from),
+                  this.#resolveSessionColumnReferenceName(relation.through.to),
+                )} in (${joinSql(ids)})`
               : sql``;
           const result = await this.execute(
-            sql`delete from ${identifier(relation.through.from.table)}
-                where ${identifier(relation.through.from.table, relation.through.from.key)} = ${ownerId}${relatedPredicate}`,
+            sql`delete from ${identifier(this.#resolveSessionColumnReferenceTable(relation.through.from))}
+                where ${identifier(
+                  this.#resolveSessionColumnReferenceTable(relation.through.from),
+                  this.#resolveSessionColumnReferenceName(relation.through.from),
+                )} = ${ownerId}${relatedPredicate}`,
           );
 
           return result.rowCount;
@@ -2121,7 +2573,7 @@ export class ObjxSession<TTransaction = unknown> {
         if (relationValue === null) {
           this.#assertColumnNullable(
             relation.from,
-            `Cannot set relation "${relationName}" on model "${model.name}" to null because foreign key "${relation.from.table}.${relation.from.key}" is not nullable.`,
+            `Cannot set relation "${relationName}" on model "${model.name}" to null because foreign key "${this.#resolveSessionColumnReferenceTable(relation.from)}.${this.#resolveSessionColumnReferenceName(relation.from)}" is not nullable.`,
           );
           values[relation.from.key] = null;
           relationResults[relationName] = null;
@@ -2159,7 +2611,7 @@ export class ObjxSession<TTransaction = unknown> {
             if (relationValue === null) {
               this.#assertColumnNullable(
                 relation.to,
-                `Cannot clear relation "${relationName}" on model "${model.name}" because foreign key "${relation.to.table}.${relation.to.key}" is not nullable.`,
+                `Cannot clear relation "${relationName}" on model "${model.name}" because foreign key "${this.#resolveSessionColumnReferenceTable(relation.to)}.${this.#resolveSessionColumnReferenceName(relation.to)}" is not nullable.`,
               );
               await this.#executeRelationUpdate(
                 relation
@@ -2232,7 +2684,7 @@ export class ObjxSession<TTransaction = unknown> {
               );
 
               await this.#ensureJoinRow(
-                relation.through.from.table,
+                this.#resolveSessionColumnReferenceTable(relation.through.from),
                 this.#createJoinRow(relation, ownerRow, upsertedChild, item),
               );
 
@@ -2263,76 +2715,80 @@ export class ObjxSession<TTransaction = unknown> {
     }
 
     const parent = this.#executionContextManager.current();
-    const startedAt = new Date();
+    const parentTransaction = parent?.transaction;
+    const hasObservers = this.#observers.length > 0;
+    const startedAt = hasObservers ? new Date() : undefined;
 
-    await notifyObservers(this.#observers, (observer) => observer.onTransactionStart, {
-      executionContext: parent,
-      metadata: options.metadata,
-      startedAt,
-    } satisfies ObjxTransactionTraceEvent);
+    if (hasObservers && startedAt) {
+      await notifyObservers(this.#observers, (observer) => observer.onTransactionStart, {
+        executionContext: parent,
+        metadata: options.metadata,
+        startedAt,
+      } satisfies ObjxTransactionTraceEvent);
+    }
 
     try {
       const result = await this.#driver.transaction(async (transaction) => {
         const transactionScope = createTransactionScope(transaction, options.metadata);
-        const contextInit: {
-          parent?: ExecutionContext;
-          transaction: typeof transactionScope;
-          values?: Readonly<Record<string, unknown>>;
-        } = {
-          transaction: transactionScope,
-        };
-
-        if (parent) {
-          contextInit.parent = parent;
-        }
-
-        if (options.values) {
-          contextInit.values = options.values;
-        }
+        const contextInit =
+          parent && options.values
+            ? {
+                parent,
+                transaction: transactionScope,
+                values: options.values,
+              }
+            : parent
+              ? {
+                  parent,
+                  transaction: transactionScope,
+                }
+              : options.values
+                ? {
+                    transaction: transactionScope,
+                    values: options.values,
+                  }
+                : {
+                    transaction: transactionScope,
+                  };
 
         return this.#executionContextManager.run(
           contextInit,
           () => callback(this),
         );
-      }, (() => {
-        const request: {
-          executionContext?: ExecutionContext;
-          metadata?: Readonly<Record<string, unknown>>;
-        } = {};
+      }, parentTransaction || options.metadata
+        ? {
+            ...(parentTransaction ? { executionContext: parent } : {}),
+            ...(options.metadata ? { metadata: options.metadata } : {}),
+          }
+        : undefined);
 
-        if (parent) {
-          request.executionContext = parent;
-        }
+      if (hasObservers && startedAt) {
+        const finishedAt = new Date();
 
-        if (options.metadata) {
-          request.metadata = options.metadata;
-        }
-
-        return request;
-      })());
-      const finishedAt = new Date();
-
-      await notifyObservers(this.#observers, (observer) => observer.onTransactionSuccess, {
-        executionContext: parent,
-        metadata: options.metadata,
-        startedAt,
-        finishedAt,
-        durationMs: finishedAt.getTime() - startedAt.getTime(),
-        result,
-      } satisfies ObjxTransactionTraceEvent);
+        await notifyObservers(this.#observers, (observer) => observer.onTransactionSuccess, {
+          executionContext: parent,
+          metadata: options.metadata,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          result,
+        } satisfies ObjxTransactionTraceEvent);
+      }
 
       return result;
     } catch (error) {
-      const finishedAt = new Date();
+      if (hasObservers && startedAt) {
+        const finishedAt = new Date();
 
-      await notifyObservers(this.#observers, (observer) => observer.onTransactionError, {
-        executionContext: parent,
-        metadata: options.metadata,
-        startedAt,
-        finishedAt,
-        durationMs: finishedAt.getTime() - startedAt.getTime(),
-        error,
-      } satisfies ObjxTransactionTraceEvent);
+        await notifyObservers(this.#observers, (observer) => observer.onTransactionError, {
+          executionContext: parent,
+          metadata: options.metadata,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          error,
+        } satisfies ObjxTransactionTraceEvent);
+      }
 
       if (error instanceof SqlTransactionError) {
         throw error;
@@ -2416,8 +2872,62 @@ export class ObjxSession<TTransaction = unknown> {
     return hydrateModelRows(
       model,
       rows,
-      typeof hydration === 'object' ? hydration : undefined,
+      typeof hydration === 'object'
+        ? {
+            ...hydration,
+            resolveSourceColumnName: (columnName, definition, hydrationModel) =>
+              this.#resolveSessionColumnName(columnName, definition, hydrationModel),
+          }
+        : this.#namingStrategy
+          ? {
+              resolveSourceColumnName: (columnName, definition, hydrationModel) =>
+                this.#resolveSessionColumnName(columnName, definition, hydrationModel),
+            }
+          : undefined,
     );
+  }
+
+  #resolveSessionTableName(tableName: string, model?: AnyModelDefinition): string {
+    if (model && model.dbTable !== model.table) {
+      return model.dbTable;
+    }
+
+    const resolved = this.#namingStrategy?.table?.(tableName, {
+      ...(model ? { model } : {}),
+    });
+
+    return typeof resolved === 'string' && resolved.trim().length > 0
+      ? resolved
+      : model?.dbTable ?? tableName;
+  }
+
+  #resolveSessionColumnName(
+    columnName: string,
+    definition: AnyColumnDefinition | undefined,
+    model?: AnyModelDefinition,
+  ): string {
+    const configuredDbName = definition?.config.dbName;
+
+    if (typeof configuredDbName === 'string' && configuredDbName.trim().length > 0) {
+      return configuredDbName;
+    }
+
+    const resolved = this.#namingStrategy?.column?.(columnName, {
+      ...(model ? { model } : {}),
+      ...(definition ? { columnDefinition: definition } : {}),
+    });
+
+    return typeof resolved === 'string' && resolved.trim().length > 0
+      ? resolved
+      : columnName;
+  }
+
+  #resolveSessionColumnReferenceTable(column: AnyModelColumnReference): string {
+    return this.#resolveSessionTableName(column.model.table, column.model);
+  }
+
+  #resolveSessionColumnReferenceName(column: AnyModelColumnReference): string {
+    return this.#resolveSessionColumnName(column.key, column.definition, column.model);
   }
 
   #assertGraphRecord<TModel extends AnyModelDefinition>(
@@ -2768,14 +3278,16 @@ export class ObjxSession<TTransaction = unknown> {
       throw new ObjxSqlEngineError('Join row creation is only supported for many-to-many relations.');
     }
 
+    const joinModel = relation.through.from.model;
     const joinRow: Record<string, unknown> = {
-      [relation.through.from.key]: ownerRow[relation.from.key],
-      [relation.through.to.key]: relatedRow[relation.to.key],
+      [this.#resolveSessionColumnReferenceName(relation.through.from)]: ownerRow[relation.from.key],
+      [this.#resolveSessionColumnReferenceName(relation.through.to)]: relatedRow[relation.to.key],
     };
 
     for (const extra of relation.through.extras ?? []) {
       if (extra in inputRow) {
-        joinRow[extra] = inputRow[extra];
+        joinRow[this.#resolveSessionColumnName(extra, joinModel.columnDefinitions[extra], joinModel)] =
+          inputRow[extra];
       }
     }
 
@@ -2832,7 +3344,13 @@ export class ObjxSession<TTransaction = unknown> {
     rows: readonly Record<string, unknown>[],
     options: ObjxQueryMaterializationOptions,
   ): Promise<readonly Record<string, unknown>[]> {
-    const hydratedRows = rows.map((row) => ({ ...row }));
+    const fastPathRows = await this.#tryEagerLoadFastPath(queryNode, rows, options);
+
+    if (fastPathRows) {
+      return fastPathRows;
+    }
+
+    const hydratedRows = this.#cloneRows(rows);
     const eagerRelationTree = this.#buildEagerRelationTree(queryNode.eagerRelations);
 
     await this.#attachRelationTree(
@@ -2843,6 +3361,258 @@ export class ObjxSession<TTransaction = unknown> {
     );
 
     return hydratedRows;
+  }
+
+  #cloneRows(rows: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+    const clonedRows = new Array<Record<string, unknown>>(rows.length);
+
+    for (let index = 0; index < rows.length; index += 1) {
+      clonedRows[index] = {
+        ...rows[index],
+      };
+    }
+
+    return clonedRows;
+  }
+
+  async #tryEagerLoadFastPath(
+    queryNode: SelectQueryNode,
+    rows: readonly Record<string, unknown>[],
+    options: ObjxQueryMaterializationOptions,
+  ): Promise<readonly Record<string, unknown>[] | undefined> {
+    if (rows.length === 1 && queryNode.limit === 1) {
+      const hydratedRows = this.#cloneRows(rows);
+      const eagerRelationTree = this.#buildEagerRelationTree(queryNode.eagerRelations);
+
+      await this.#attachSingleRowRelationTree(
+        queryNode.model,
+        hydratedRows[0]!,
+        eagerRelationTree,
+        options,
+      );
+
+      return hydratedRows;
+    }
+
+    if (queryNode.eagerRelations.length !== 1) {
+      return undefined;
+    }
+
+    const relationName = queryNode.eagerRelations[0];
+
+    if (!relationName || relationName.includes('.')) {
+      return undefined;
+    }
+
+    const relation = queryNode.model.relations[relationName];
+
+    if (!relation || relation.kind === 'manyToMany') {
+      return undefined;
+    }
+
+    const hydratedRows = this.#cloneRows(rows);
+
+    await this.#attachRelation(
+      queryNode.model,
+      relationName,
+      relation,
+      hydratedRows,
+      options,
+    );
+
+    return hydratedRows;
+  }
+
+  async #attachSingleRowRelationTree(
+    model: AnyModelDefinition,
+    row: Record<string, unknown>,
+    relationTree: EagerRelationTree,
+    options: ObjxQueryMaterializationOptions,
+  ): Promise<void> {
+    if (relationTree.size === 0) {
+      return;
+    }
+
+    for (const [relationName, childTree] of relationTree.entries()) {
+      const relation = model.relations[relationName];
+
+      if (!relation) {
+        continue;
+      }
+
+      const related = await this.#loadSingleRowRelation(
+        model,
+        row,
+        relationName,
+        relation,
+        options,
+      );
+      row[relationName] = related;
+
+      if (childTree.size === 0) {
+        continue;
+      }
+
+      if (Array.isArray(related)) {
+        for (const nestedRow of related) {
+          if (!isRecord(nestedRow)) {
+            continue;
+          }
+
+          await this.#attachSingleRowRelationTree(
+            relation.target(),
+            nestedRow,
+            childTree,
+            options,
+          );
+        }
+
+        continue;
+      }
+
+      if (!isRecord(related)) {
+        continue;
+      }
+
+      await this.#attachSingleRowRelationTree(
+        relation.target(),
+        related,
+        childTree,
+        options,
+      );
+    }
+  }
+
+  async #loadSingleRowRelation(
+    model: AnyModelDefinition,
+    row: Record<string, unknown>,
+    relationName: string,
+    relation: AnyModelDefinition['relations'][string],
+    options: ObjxQueryMaterializationOptions,
+  ): Promise<Record<string, unknown> | readonly Record<string, unknown>[] | null> {
+    if (!(relation.from.key in row)) {
+      throw new ObjxSqlEngineError(
+        `Cannot eager load relation "${relationName}" for model "${model.name}" because the source key "${relation.from.key}" is missing from the result set.`,
+      );
+    }
+
+    if (relation.kind === 'manyToMany') {
+      return this.#loadSingleRowManyToManyRelation(relation, row, options);
+    }
+
+    const sourceValue = row[relation.from.key];
+
+    if (sourceValue === null || sourceValue === undefined) {
+      return relation.kind === 'hasMany' ? [] : null;
+    }
+
+    const executeOptions: {
+      hydrate?: boolean | HydrationOptions;
+    } = {};
+
+    if (options.hydrate !== undefined) {
+      executeOptions.hydrate = options.hydrate;
+    }
+
+    if (relation.kind === 'hasMany') {
+      return this.execute(
+        relation.target().query().where(
+          op.eq(relation.to as never, sourceValue as never),
+        ),
+        executeOptions,
+      ) as Promise<readonly Record<string, unknown>[]>;
+    }
+
+    const relatedRows = await this.execute(
+      relation.target().query().where(
+        op.eq(relation.to as never, sourceValue as never),
+      ).limit(1),
+      executeOptions,
+    ) as readonly Record<string, unknown>[];
+
+    return relatedRows[0] ?? null;
+  }
+
+  async #loadSingleRowManyToManyRelation(
+    relation: Exclude<AnyModelDefinition['relations'][string], undefined>,
+    row: Record<string, unknown>,
+    options: ObjxQueryMaterializationOptions,
+  ): Promise<readonly Record<string, unknown>[]> {
+    if (relation.kind !== 'manyToMany' || !relation.through) {
+      return [];
+    }
+
+    const sourceValue = row[relation.from.key];
+
+    if (sourceValue === null || sourceValue === undefined) {
+      return [];
+    }
+
+    const targetAlias = '__objx_target';
+    const throughRowsResult = await this.execute(
+      sql`select ${identifier(
+            this.#resolveSessionColumnReferenceTable(relation.through.to),
+            this.#resolveSessionColumnReferenceName(relation.through.to),
+          )} as ${identifier(targetAlias)}
+          from ${identifier(this.#resolveSessionColumnReferenceTable(relation.through.from))}
+          where ${identifier(
+            this.#resolveSessionColumnReferenceTable(relation.through.from),
+            this.#resolveSessionColumnReferenceName(relation.through.from),
+          )} = ${sourceValue}`,
+    );
+    const throughRows = throughRowsResult.rows;
+    const targetValues = uniqueNonNullableValues(
+      throughRows.map(
+        (throughRow) =>
+          throughRow[targetAlias] ??
+          throughRow[this.#resolveSessionColumnReferenceName(relation.through.to)],
+      ),
+    );
+
+    if (targetValues.length === 0) {
+      return [];
+    }
+
+    const executeOptions: {
+      hydrate?: boolean | HydrationOptions;
+    } = {};
+
+    if (options.hydrate !== undefined) {
+      executeOptions.hydrate = options.hydrate;
+    }
+
+    const targetRows = await this.execute(
+      relation.target().query().where(
+        op.in(relation.to as never, targetValues as readonly never[]),
+      ),
+      executeOptions,
+    ) as readonly Record<string, unknown>[];
+
+    const targetByKey = new Map<unknown, Record<string, unknown>>();
+
+    for (const targetRow of targetRows) {
+      const key = toRelationMatchKey(targetRow[relation.to.key]);
+
+      if (!targetByKey.has(key)) {
+        targetByKey.set(key, targetRow);
+      }
+    }
+
+    const attachedRows: Record<string, unknown>[] = [];
+
+    for (const throughRow of throughRows) {
+      const targetKey = toRelationMatchKey(
+        throughRow[targetAlias] ??
+          throughRow[this.#resolveSessionColumnReferenceName(relation.through.to)],
+      );
+      const targetRow = targetByKey.get(targetKey);
+
+      if (targetRow) {
+        attachedRows.push(targetRow);
+      }
+    }
+
+    return attachedRows;
   }
 
   #parseEagerRelationPath(relationPath: string): readonly string[] {
@@ -2891,6 +3661,24 @@ export class ObjxSession<TTransaction = unknown> {
     rows: readonly Record<string, unknown>[],
     relationName: string,
   ): Record<string, unknown>[] {
+    if (rows.length === 1) {
+      const related = rows[0]?.[relationName];
+
+      if (Array.isArray(related)) {
+        const nestedRows: Record<string, unknown>[] = [];
+
+        for (const item of related) {
+          if (isRecord(item)) {
+            nestedRows.push(item);
+          }
+        }
+
+        return nestedRows;
+      }
+
+      return isRecord(related) ? [related] : [];
+    }
+
     const nestedRows: Record<string, unknown>[] = [];
     const seen = new Set<Record<string, unknown>>();
 
@@ -3008,23 +3796,56 @@ export class ObjxSession<TTransaction = unknown> {
       executeOptions,
     ) as readonly Record<string, unknown>[];
 
-    const rowsByTargetKey = new Map<unknown, Record<string, unknown>[]>();
+    if (relation.kind === 'hasMany') {
+      if (rows.length === 1) {
+        rows[0]![relationName] = targetRows.length === 0 ? [] : Array.from(targetRows);
+        return;
+      }
+
+      const attachmentsBySourceKey = new Map<unknown, Record<string, unknown>[][]>();
+
+      for (const row of rows) {
+        const matches: Record<string, unknown>[] = [];
+        row[relationName] = matches;
+
+        const sourceKey = row[relation.from.key];
+        const attachments = attachmentsBySourceKey.get(sourceKey);
+
+        if (attachments) {
+          attachments.push(matches);
+          continue;
+        }
+
+        attachmentsBySourceKey.set(sourceKey, [matches]);
+      }
+
+      for (const targetRow of targetRows) {
+        const attachments = attachmentsBySourceKey.get(targetRow[relation.to.key]);
+
+        if (!attachments) {
+          continue;
+        }
+
+        for (const matches of attachments) {
+          matches.push(targetRow);
+        }
+      }
+
+      return;
+    }
+
+    const rowByTargetKey = new Map<unknown, Record<string, unknown>>();
 
     for (const targetRow of targetRows) {
       const key = targetRow[relation.to.key];
 
-      if (!rowsByTargetKey.has(key)) {
-        rowsByTargetKey.set(key, []);
+      if (!rowByTargetKey.has(key)) {
+        rowByTargetKey.set(key, targetRow);
       }
-
-      rowsByTargetKey.get(key)?.push(targetRow);
     }
 
     for (const row of rows) {
-      const sourceKey = row[relation.from.key];
-      const matches = rowsByTargetKey.get(sourceKey) ?? [];
-
-      row[relationName] = relation.kind === 'hasMany' ? matches : (matches[0] ?? null);
+      row[relationName] = rowByTargetKey.get(row[relation.from.key]) ?? null;
     }
   }
 
@@ -3051,12 +3872,27 @@ export class ObjxSession<TTransaction = unknown> {
     const sourceAlias = '__objx_source';
     const targetAlias = '__objx_target';
     const throughRowsResult = await this.execute(
-      sql`select ${identifier(relation.through.from.table, relation.through.from.key)} as ${identifier(sourceAlias)}, ${identifier(relation.through.to.table, relation.through.to.key)} as ${identifier(targetAlias)}
-          from ${identifier(relation.through.from.table)}
-          where ${identifier(relation.through.from.table, relation.through.from.key)} in (${joinSql(sourceValues)})`,
+      sql`select ${identifier(
+            this.#resolveSessionColumnReferenceTable(relation.through.from),
+            this.#resolveSessionColumnReferenceName(relation.through.from),
+          )} as ${identifier(sourceAlias)}, ${identifier(
+            this.#resolveSessionColumnReferenceTable(relation.through.to),
+            this.#resolveSessionColumnReferenceName(relation.through.to),
+          )} as ${identifier(targetAlias)}
+          from ${identifier(this.#resolveSessionColumnReferenceTable(relation.through.from))}
+          where ${identifier(
+            this.#resolveSessionColumnReferenceTable(relation.through.from),
+            this.#resolveSessionColumnReferenceName(relation.through.from),
+          )} in (${joinSql(sourceValues)})`,
     );
     const throughRows = throughRowsResult.rows;
-    const targetValues = uniqueNonNullableValues(throughRows.map((row) => row[targetAlias]));
+    const targetValues = uniqueNonNullableValues(
+      throughRows.map(
+        (throughRow) =>
+          throughRow[targetAlias] ??
+          throughRow[this.#resolveSessionColumnReferenceName(relation.through.to)],
+      ),
+    );
 
     if (targetValues.length === 0) {
       for (const row of rows) {
@@ -3081,10 +3917,56 @@ export class ObjxSession<TTransaction = unknown> {
       executeOptions,
     ) as readonly Record<string, unknown>[];
 
-    const targetsByKey = new Map<unknown, Record<string, unknown>[]>();
+    const targetsByKey = new Map<string | null | undefined, Record<string, unknown>[]>();
+    const attachmentsBySourceKey = new Map<string | null | undefined, Record<string, unknown>[][]>();
+
+    for (const row of rows) {
+      const matches: Record<string, unknown>[] = [];
+      row[relationName] = matches;
+
+      const sourceKey = toRelationMatchKey(row[relation.from.key]);
+      const attachments = attachmentsBySourceKey.get(sourceKey);
+
+      if (attachments) {
+        attachments.push(matches);
+        continue;
+      }
+
+      attachmentsBySourceKey.set(sourceKey, [matches]);
+    }
+
+    const attachmentsByTargetKey = new Map<string | null | undefined, Record<string, unknown>[][]>();
+
+    for (const throughRow of throughRows) {
+      const sourceKey = toRelationMatchKey(
+        throughRow[sourceAlias] ??
+          throughRow[this.#resolveSessionColumnReferenceName(relation.through.from)],
+      );
+      const attachments = attachmentsBySourceKey.get(sourceKey);
+
+      if (!attachments) {
+        continue;
+      }
+
+      const targetKey = toRelationMatchKey(
+        throughRow[targetAlias] ??
+          throughRow[this.#resolveSessionColumnReferenceName(relation.through.to)],
+      );
+      const targetAttachments = attachmentsByTargetKey.get(targetKey);
+
+      if (targetAttachments) {
+        for (const matches of attachments) {
+          targetAttachments.push(matches);
+        }
+
+        continue;
+      }
+
+      attachmentsByTargetKey.set(targetKey, Array.from(attachments));
+    }
 
     for (const targetRow of targetRows) {
-      const key = targetRow[relation.to.key];
+      const key = toRelationMatchKey(targetRow[relation.to.key]);
 
       if (!targetsByKey.has(key)) {
         targetsByKey.set(key, []);
@@ -3093,24 +3975,18 @@ export class ObjxSession<TTransaction = unknown> {
       targetsByKey.get(key)?.push(targetRow);
     }
 
-    const targetKeysBySource = new Map<unknown, unknown[]>();
+    for (const [targetKey, attachments] of attachmentsByTargetKey) {
+      const relatedRows = targetsByKey.get(targetKey);
 
-    for (const throughRow of throughRows) {
-      const sourceKey = throughRow[sourceAlias];
-      const targetKey = throughRow[targetAlias];
-
-      if (!targetKeysBySource.has(sourceKey)) {
-        targetKeysBySource.set(sourceKey, []);
+      if (!relatedRows) {
+        continue;
       }
 
-      targetKeysBySource.get(sourceKey)?.push(targetKey);
-    }
-
-    for (const row of rows) {
-      const sourceKey = row[relation.from.key];
-      const targetKeys = targetKeysBySource.get(sourceKey) ?? [];
-      const relatedRows = targetKeys.flatMap((targetKey) => targetsByKey.get(targetKey) ?? []);
-      row[relationName] = relatedRows;
+      for (const matches of attachments) {
+        for (const relatedRow of relatedRows) {
+          matches.push(relatedRow);
+        }
+      }
     }
   }
 }

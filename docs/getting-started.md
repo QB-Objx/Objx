@@ -53,6 +53,7 @@ The template contains:
 - `insertGraph`, `upsertGraph`, `relate`, `unrelate`
 - eager loading
 - `createSnakeCaseNamingPlugin()` for camelCase models over snake_case columns
+- `createSnakeCaseNamingStrategy()` for session-wide physical naming without changing model metadata
 - `soft delete`
 - `audit trail`
 - `tenant scope`
@@ -86,6 +87,7 @@ Those examples now show the snake case naming path in practice:
 - physical columns such as `tenant_id`, `project_id`, and `deleted_at`
 - logical keys such as `tenantId`, `projectId`, and `deletedAt`
 - `createSnakeCaseNamingPlugin()` attached during `defineModel(...)`
+- `createSnakeCaseNamingStrategy()` passed to `createSession(...)` when the mapping should stay session-global
 
 The NestJS example uses the recommended operational flow:
 
@@ -107,6 +109,13 @@ npm run benchmark
 Reference:
 
 - `benchmarks/README.md`
+
+Useful dedicated variants:
+
+```bash
+npm run benchmark:tx:compare
+npm run benchmark:compile
+```
 
 ## 8. Migration And Seed Schemas
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import pg from 'pg';
@@ -7,13 +7,15 @@ import mysql from 'mysql2/promise';
 
 import { col, defineModel } from '@qbobjx/core';
 import { runCodegenCli } from '@qbobjx/codegen';
+import {
+  cleanupCodegenTables,
+  createCodegenSchemaDirectory,
+  mySqlConnectionString,
+  postgresConnectionString,
+  resetTaskTable,
+} from './fixtures/multi-dialect.mjs';
 import { createMySqlSession } from '../packages/mysql-driver/dist/index.js';
 import { createPostgresSession } from '../packages/postgres-driver/dist/index.js';
-
-const postgresConnectionString =
-  process.env.OBJX_POSTGRES_URL ?? process.env.POSTGRES_DATABASE_URL;
-const mySqlConnectionString =
-  process.env.OBJX_MYSQL_URL ?? process.env.MYSQL_DATABASE_URL;
 
 if (!postgresConnectionString) {
   throw new Error(
@@ -44,98 +46,6 @@ function isRollbackError(expectedMessage) {
     error?.cause?.message === expectedMessage || error?.message === expectedMessage;
 }
 
-async function resetPostgresTaskTable(pool) {
-  await pool.query('drop table if exists task_items');
-  await pool.query(`
-    create table task_items (
-      id integer generated always as identity primary key,
-      title text not null,
-      done boolean not null default false
-    )
-  `);
-}
-
-async function resetMySqlTaskTable(pool) {
-  await pool.query('drop table if exists task_items');
-  await pool.query(`
-    create table task_items (
-      id integer not null auto_increment primary key,
-      title varchar(255) not null,
-      done boolean not null default false
-    )
-  `);
-}
-
-async function cleanupPostgresCodegenTables(pool, tableName) {
-  await pool.query(`drop table if exists "public"."objx_seed_history"`);
-  await pool.query(`drop table if exists "public"."objx_migration_history"`);
-  await pool.query(`drop table if exists "public"."${tableName}"`);
-}
-
-async function cleanupMySqlCodegenTables(pool, tableName) {
-  await pool.query('drop table if exists `objx_seed_history`');
-  await pool.query('drop table if exists `objx_migration_history`');
-  await pool.query(`drop table if exists \`${tableName}\``);
-}
-
-async function createSchemaDirectory(tempDir, dialect, tableName) {
-  const migrationDir = path.join(tempDir, 'db', 'migrations');
-  const seedDir = path.join(tempDir, 'db', 'seeds');
-
-  await mkdir(migrationDir, { recursive: true });
-  await mkdir(seedDir, { recursive: true });
-
-  const migrationSql =
-    dialect === 'postgres'
-      ? `create table ${tableName} (
-  id integer generated always as identity primary key,
-  name text not null
-);`
-      : `create table ${tableName} (
-  id integer not null auto_increment primary key,
-  name varchar(255) not null
-);`;
-  const seedSql =
-    dialect === 'postgres'
-      ? `insert into ${tableName} (name) values ('Alpha');`
-      : `insert into ${tableName} (name) values ('Alpha');`;
-
-  await writeFile(
-    path.join(migrationDir, '000001_init.migration.mjs'),
-    `export default {
-  name: '000001_init',
-  up: [
-    \`${migrationSql}\`,
-  ],
-  down: [
-    'drop table if exists ${tableName};',
-  ],
-};
-`,
-    'utf8',
-  );
-
-  await writeFile(
-    path.join(seedDir, '000001_projects.seed.mjs'),
-    `export default {
-  name: '000001_projects',
-  run: [
-    \`${seedSql}\`,
-  ],
-  revert: [
-    "delete from ${tableName} where name = 'Alpha';",
-  ],
-};
-`,
-    'utf8',
-  );
-
-  return {
-    migrationDir,
-    seedDir,
-  };
-}
-
 const tests = [
   [
     'postgres driver uses real nested transactions',
@@ -145,7 +55,7 @@ const tests = [
       });
 
       try {
-        await resetPostgresTaskTable(pool);
+        await resetTaskTable('postgres', pool);
 
         const session = createPostgresSession({
           pool,
@@ -225,7 +135,7 @@ const tests = [
       const pool = mysql.createPool(mySqlConnectionString);
 
       try {
-        await resetMySqlTaskTable(pool);
+        await resetTaskTable('mysql', pool);
 
         const session = createMySqlSession({
           pool,
@@ -311,12 +221,12 @@ const tests = [
       const stderr = [];
 
       try {
-        const { migrationDir, seedDir } = await createSchemaDirectory(
+        const { migrationDir, seedDir } = await createCodegenSchemaDirectory(
           tempDir,
           'postgres',
           tableName,
         );
-        await cleanupPostgresCodegenTables(pool, tableName);
+        await cleanupCodegenTables('postgres', pool, tableName);
 
         const migrateExitCode = await runCodegenCli(
           [
@@ -433,7 +343,7 @@ const tests = [
         assert.equal(schemaJson.dialect, 'postgres');
         assert.ok(schemaJson.tables.some((table) => table.name === tableName));
       } finally {
-        await cleanupPostgresCodegenTables(pool, tableName);
+        await cleanupCodegenTables('postgres', pool, tableName);
         await pool.end();
         await rm(tempDir, { recursive: true, force: true });
       }
@@ -449,12 +359,12 @@ const tests = [
       const stderr = [];
 
       try {
-        const { migrationDir, seedDir } = await createSchemaDirectory(
+        const { migrationDir, seedDir } = await createCodegenSchemaDirectory(
           tempDir,
           'mysql',
           tableName,
         );
-        await cleanupMySqlCodegenTables(pool, tableName);
+        await cleanupCodegenTables('mysql', pool, tableName);
 
         const migrateExitCode = await runCodegenCli(
           [
@@ -571,7 +481,7 @@ const tests = [
         assert.equal(schemaJson.dialect, 'mysql');
         assert.ok(schemaJson.tables.some((table) => table.name === tableName));
       } finally {
-        await cleanupMySqlCodegenTables(pool, tableName);
+        await cleanupCodegenTables('mysql', pool, tableName);
         await pool.end();
         await rm(tempDir, { recursive: true, force: true });
       }

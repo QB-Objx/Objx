@@ -1,13 +1,17 @@
+import { createDrizzleAdapter } from './drizzle.mjs';
 import { createKnexAdapter } from './knex.mjs';
 import { createObjxAdapter } from './objx.mjs';
 import { createPrismaAdapter } from './prisma.mjs';
 import { createSequelizeAdapter } from './sequelize.mjs';
+import { createTypeOrmAdapter } from './typeorm.mjs';
 
 const registry = {
   objx: createObjxAdapter,
   prisma: createPrismaAdapter,
   sequelize: createSequelizeAdapter,
   knex: createKnexAdapter,
+  drizzle: createDrizzleAdapter,
+  typeorm: createTypeOrmAdapter,
 };
 
 export async function createAdapters(config) {
