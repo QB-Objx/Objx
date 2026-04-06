@@ -1115,6 +1115,24 @@ const SnakeCaseAccount = defineModel({
   plugins: [createSnakeCaseNamingPlugin()],
 });
 
+const SnakeCaseCustomAccount = defineModel({
+  name: 'SnakeCaseCustomAccount',
+  table: 'custom_snake_accounts',
+  columns: {
+    id: col.int().primary(),
+    externalId: col.text(),
+    createdAt: col.timestamp(),
+  },
+  plugins: [
+    createSnakeCaseNamingPlugin({
+      exclude: ['externalId'],
+      overrides: {
+        createdAt: 'created_on',
+      },
+    }),
+  ],
+});
+
 const tests = [
   [
     'bigint columns hydrate bigint values from result rows',
@@ -1219,6 +1237,51 @@ const tests = [
       assert.ok(rows[0].createdAt instanceof Date);
       assert.equal(rows[0].tenant_id, undefined);
       assert.equal(rows[0].created_at, undefined);
+    },
+  ],
+  [
+    'insert queries map snake_case columns on writes and keep logical keys on hydration',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+      const createdAt = new Date('2026-04-03T00:00:00.000Z');
+
+      const rows = await session.execute(
+        SnakeCaseAccount.insert({
+          tenantId: 'tenant_b',
+          createdAt,
+        }).returning(({ id, tenantId, createdAt: createdAtColumn }) => [id, tenantId, createdAtColumn]),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].tenantId, 'tenant_b');
+      assert.ok(rows[0].createdAt instanceof Date);
+      assert.equal(rows[0].tenant_id, undefined);
+
+      const storedRow = driver.tables.get('snake_accounts').at(-1);
+
+      assert.equal(storedRow.tenant_id, 'tenant_b');
+      assert.equal(storedRow.created_at, createdAt);
+      assert.equal(storedRow.tenantId, undefined);
+    },
+  ],
+  [
+    'snake_case plugin respects exclude and overrides during compilation',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'postgres',
+      }).compile(
+        SnakeCaseCustomAccount.insert({
+          externalId: 'ext_1',
+          createdAt: new Date('2026-04-03T00:00:00.000Z'),
+        }),
+      );
+
+      assert.match(compiled.sql, /insert into "custom_snake_accounts"/i);
+      assert.match(compiled.sql, /\("externalId", "created_on"\)/i);
     },
   ],
   [

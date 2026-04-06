@@ -6,6 +6,7 @@ import {
 } from '../../../packages/core/dist/index.js';
 import {
   createAuditTrailPlugin,
+  createSnakeCaseNamingPlugin,
   createSoftDeletePlugin,
   createTenantScopePlugin,
 } from '../../../packages/plugins/dist/index.js';
@@ -26,6 +27,10 @@ function createTenantPlugin() {
   return createTenantScopePlugin();
 }
 
+function createSnakePlugin() {
+  return createSnakeCaseNamingPlugin();
+}
+
 export const Company = defineModel({
   name: 'Company',
   table: 'companies',
@@ -34,7 +39,7 @@ export const Company = defineModel({
     name: col.text(),
     tenantId: col.text(),
   },
-  plugins: [createTenantPlugin(), createAuditPlugin()],
+  plugins: [createSnakePlugin(), createTenantPlugin(), createAuditPlugin()],
 });
 
 export const User = defineModel({
@@ -53,7 +58,7 @@ export const User = defineModel({
       to: Company.columns.id,
     }),
   }),
-  plugins: [createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
+  plugins: [createSnakePlugin(), createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
 });
 
 export const TaskComment = defineModel({
@@ -72,7 +77,7 @@ export const TaskComment = defineModel({
       to: User.columns.id,
     }),
   }),
-  plugins: [createTenantPlugin(), createAuditPlugin()],
+  plugins: [createSnakePlugin(), createTenantPlugin(), createAuditPlugin()],
 });
 
 export const Task = defineModel({
@@ -97,7 +102,7 @@ export const Task = defineModel({
       to: TaskComment.columns.taskId,
     }),
   }),
-  plugins: [createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
+  plugins: [createSnakePlugin(), createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
 });
 
 export const Project = defineModel({
@@ -126,5 +131,5 @@ export const Project = defineModel({
       to: Task.columns.projectId,
     }),
   }),
-  plugins: [createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
+  plugins: [createSnakePlugin(), createTenantPlugin(), createSoftDeletePlugin(), createAuditPlugin()],
 });

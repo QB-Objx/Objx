@@ -54,6 +54,7 @@
             </div>
             <ul class="hero-pills" aria-label="Highlights">
               <li>Typed models with <code>defineModel</code></li>
+              <li><code>createSnakeCaseNamingPlugin()</code> for camelCase over snake_case schemas</li>
               <li>Embedded SQL compiler and runtime</li>
               <li><code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
               <li>Plugins for tenant scope, soft delete, audit trail, timestamps</li>
@@ -142,12 +143,14 @@
             <p>
               OBJX treats schema metadata as runtime truth and type signal at the same time.
               Defaults can be static or factory-based, generated fields stay out of required insert
-              payloads, and relation columns stay explicit.
+              payloads, relation columns stay explicit, and naming plugins can keep models in
+              camelCase even when the database stays in snake_case.
             </p>
             <ul class="detail-list">
               <li><code>col.bigint()</code> and <code>col.bigInt()</code> for bigint columns</li>
               <li><code>.default(value)</code> and <code>.default(() =&gt; value)</code></li>
               <li><code>.generated()</code> for runtime-populated fields like tenant ids and graph-owned foreign keys</li>
+              <li><code>createSnakeCaseNamingPlugin()</code> remaps physical columns during model definition</li>
               <li><code>belongsToOne</code>, <code>hasOne</code>, <code>hasMany</code>, <code>manyToMany</code></li>
             </ul>
           </div>
@@ -158,6 +161,7 @@
               <button type="button" class="copy-button" data-copy-target="model-snippet">Copy</button>
             </div>
             <pre><code id="model-snippet">import { col, defineModel, hasMany } from '@qbobjx/core';
+import { createSnakeCaseNamingPlugin } from '@qbobjx/plugins';
 
 const generateSnowflakeId = () =&gt; BigInt(Date.now());
 
@@ -177,6 +181,7 @@ export const Project = defineModel({
       to: Task.columns.projectId,
     }),
   }),
+  plugins: [createSnakeCaseNamingPlugin()],
 });</code></pre>
           </div>
         </section>
@@ -296,11 +301,12 @@ npm run codegen -- seed --dialect postgres --database "$DATABASE_URL" --dir ./db
               <ul class="detail-list">
                 <li><code>db/migrations/*.migration.mjs</code></li>
                 <li><code>db/seeds/*.seed.mjs</code></li>
-                <li><code>npm run db:migrate</code> before app start</li>
-                <li><code>npm run db:seed</code> for dev and demo data</li>
-                <li>NestJS example already follows this flow end to end</li>
-              </ul>
-            </div>
+              <li><code>npm run db:migrate</code> before app start</li>
+              <li><code>npm run db:seed</code> for dev and demo data</li>
+              <li>API examples keep camelCase models while migrations define snake_case columns</li>
+              <li>NestJS example already follows this flow end to end</li>
+            </ul>
+          </div>
           </div>
         </section>
 
@@ -372,15 +378,15 @@ export class AppModule {}</code></pre>
           <div class="example-grid">
             <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/complex-runtime">
               <strong>complex-runtime</strong>
-              <span>Graph ops, relation expressions, nested transactions, raw SQL.</span>
+              <span>Graph ops, relation expressions, nested transactions, raw SQL, and snake_case schemas.</span>
             </a>
             <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/express-api">
               <strong>express-api</strong>
-              <span>Express API with global session plugins, validation, CRUD, and audit trail.</span>
+              <span>Express API with snake_case physical columns, validation, CRUD, and audit trail.</span>
             </a>
             <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/nestjs-api">
               <strong>nestjs-api</strong>
-              <span>NestJS API using the official module, typed migrations, and typed seeds.</span>
+              <span>NestJS API using the official module, typed migrations, typed seeds, and snake_case columns.</span>
             </a>
             <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/sqlite-introspection">
               <strong>sqlite-introspection</strong>
@@ -423,7 +429,7 @@ export class AppModule {}</code></pre>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/plugins">
               <strong>@qbobjx/plugins</strong>
-              <span>Tenant scope, timestamps, soft delete, and audit trail.</span>
+              <span>Snake case naming, tenant scope, timestamps, soft delete, and audit trail.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/validation">
               <strong>@qbobjx/validation</strong>

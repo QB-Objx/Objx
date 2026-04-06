@@ -52,6 +52,7 @@ The template contains:
 - official MySQL driver package
 - `insertGraph`, `upsertGraph`, `relate`, `unrelate`
 - eager loading
+- `createSnakeCaseNamingPlugin()` for camelCase models over snake_case columns
 - `soft delete`
 - `audit trail`
 - `tenant scope`
@@ -80,6 +81,12 @@ Reference:
 - `examples/express-api/README.md`
 - `examples/nestjs-api/README.md`
 
+Those examples now show the snake case naming path in practice:
+
+- physical columns such as `tenant_id`, `project_id`, and `deleted_at`
+- logical keys such as `tenantId`, `projectId`, and `deletedAt`
+- `createSnakeCaseNamingPlugin()` attached during `defineModel(...)`
+
 The NestJS example uses the recommended operational flow:
 
 - `db/migrations/*.migration.mjs`
@@ -88,15 +95,18 @@ The NestJS example uses the recommended operational flow:
 
 ## 7. Public Benchmarks
 
-Run the public benchmark suite:
+Run the real benchmark suite:
 
 ```bash
+npm run benchmark:install
+npm run benchmark:db:up
+npm run benchmark:setup
 npm run benchmark
 ```
 
 Reference:
 
-- `examples/benchmarks/README.md`
+- `benchmarks/real/README.md`
 
 ## 8. Migration And Seed Schemas
 

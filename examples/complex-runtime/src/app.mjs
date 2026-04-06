@@ -213,7 +213,7 @@ const rawTaskCountResult = await executionContextManager.run(
   },
   () =>
     session.execute(
-      sql`select count(*) as ${identifier('totalTasks')} from ${identifier('tasks')} where ${identifier('tasks', 'projectId')} = ${projectId}`,
+      sql`select count(*) as ${identifier('totalTasks')} from ${identifier('tasks')} where ${identifier('tasks', 'project_id')} = ${projectId}`,
     ),
 );
 

@@ -6,6 +6,7 @@ Example REST API built with Express using `OBJX` as ORM/query builder.
 
 - SQLite session with `@qbobjx/sqlite-driver`
 - global plugins configured at session creation time
+- `createSnakeCaseNamingPlugin()` with camelCase models over snake_case columns
 - `tenant scope`, `soft delete`, and `audit trail`
 - model-level validation with `@qbobjx/validation` + `zod`
 - `insertGraph`, eager loading, and transactions
@@ -28,6 +29,8 @@ Default server:
 - `http://127.0.0.1:3000`
 
 The schema in `schema.sql` is applied automatically during bootstrap.
+That schema uses physical columns like `tenant_id`, `project_id`, and `deleted_at`, while the
+application code keeps logical keys such as `tenantId`, `projectId`, and `deletedAt`.
 
 ## Headers
 

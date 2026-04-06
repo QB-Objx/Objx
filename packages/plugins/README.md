@@ -68,3 +68,12 @@ export const Account = defineModel({
 ```
 
 The compiler emits physical names like `tenant_id`, while hydrated rows continue to use model keys like `tenantId`.
+
+Important: this plugin should be attached at model definition time. It updates column metadata in
+the `onModelDefine` hook, so adding it only as a session-global plugin is too late for remapping.
+
+Repository examples using this pattern:
+
+- `examples/complex-runtime`
+- `examples/express-api`
+- `examples/nestjs-api`

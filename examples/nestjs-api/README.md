@@ -7,6 +7,7 @@ Example API built with NestJS using `@qbobjx/nestjs` on top of SQLite.
 - `ObjxModule.forRootAsync(...)` with a ready-to-use OBJX session
 - request context via the package global interceptor
 - global filter for `ObjxValidationError`
+- `createSnakeCaseNamingPlugin()` with camelCase models over snake_case columns
 - `tenant scope`, `soft delete`, `audit trail`, and validation
 - migrations and seeds with `@qbobjx/codegen`
 - transactions, eager loading, and `insertGraph`
@@ -30,6 +31,10 @@ Prepare the database before starting the app:
 ```bash
 npm run db:setup
 ```
+
+The migration and seed files create physical columns like `tenant_id`, `project_id`, and
+`deleted_at`, while the NestJS service layer and models keep logical keys such as `tenantId`,
+`projectId`, and `deletedAt`.
 
 Or run step by step:
 

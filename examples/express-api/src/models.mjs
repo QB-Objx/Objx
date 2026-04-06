@@ -8,6 +8,7 @@ import {
   createValidationPlugin,
   createZodAdapter,
 } from '@qbobjx/validation';
+import { createSnakeCaseNamingPlugin } from '@qbobjx/plugins';
 import { z } from 'zod';
 
 const projectStatusSchema = z.enum(['planned', 'in_progress', 'completed']);
@@ -60,6 +61,7 @@ export const Task = defineModel({
     }),
   }),
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createValidationPlugin({
       adapter: createZodAdapter(),
       schemas: {
@@ -89,6 +91,7 @@ export const Project = defineModel({
     }),
   }),
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createValidationPlugin({
       adapter: createZodAdapter(),
       schemas: {

@@ -261,6 +261,10 @@ export const Account = defineModel({
 
 The SQL compiler uses the configured database column names for `select`, `insert`, `update`, and predicates, and hydration maps result rows back to model keys.
 
+Important: `createSnakeCaseNamingPlugin()` should be attached when defining the model. It changes
+column metadata during model definition, so registering it only as a session-global plugin is too
+late for column remapping.
+
 ## Relations
 
 Supported relation builders:
@@ -948,8 +952,8 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 
 - `examples/sqlite-introspection`: introspection flow and generated model output
 - `examples/complex-runtime`: context, plugins, graph ops, nested eager loading, transactions, and raw SQL
-- `examples/express-api`: REST API with Express, SQLite, global session plugins, validation, and CRUD
-- `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and prewired session
+- `examples/express-api`: REST API with Express, SQLite, snake_case physical columns, validation, and CRUD
+- `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and snake_case physical columns
 - `examples/benchmarks`: compiler/runtime microbenchmark suite
 - `benchmarks/real`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, and `Knex`
 
