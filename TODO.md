@@ -182,6 +182,7 @@ Conclusao:
 - [x] fast path de eager loading para `belongsToOne`
 - [x] reduzir `Map`/`Set` temporarios na montagem de relacoes
 - [x] evitar trabalho extra quando o resultado vem com `limit 1`
+- [x] fast path interno para subqueries de eager loading sem observers/plugins
 - [x] benchmark dedicado de eager loading por cardinalidade
 
 ### 10.3 Transacoes
@@ -189,6 +190,7 @@ Conclusao:
 - [x] reduzir overhead do caminho `session.transaction(...)`
 - [x] revisar custo de `ExecutionContext` por transacao
 - [x] minimizar custo de nested transactions/savepoints
+- [x] sessao bound a transacao para evitar lookup repetido de `ExecutionContext`
 - [x] benchmark separado de `begin/commit/rollback`
 - [x] comparar `OBJX` vs `knex` vs `prisma` em benchmark transacional dedicado
 
@@ -407,6 +409,11 @@ Conclusao:
 - [ ] comparativos dedicados por cenario (`transaction-read-write`, eager loading, writes)
 - [ ] otimizar transacao Postgres
 - [ ] otimizar eager loading Postgres
+
+Notas do bloco:
+- `session.transaction(...)` agora cria sessao filha bound a transacao para reduzir lookup de contexto no hot path
+- eager loading simples agora pode executar subqueries por fast path interno quando nao ha observers/plugins
+- benchmark host continua util para iteracao, mas a medicao que decide fechamento do item deve usar o perfil Docker oficial
 
 ### Bloco C: Ganho De Produto
 

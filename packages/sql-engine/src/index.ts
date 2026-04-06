@@ -1456,6 +1456,14 @@ export interface ObjxSessionOptions<TTransaction = unknown> {
   readonly hydrateByDefault?: boolean | HydrationOptions;
 }
 
+interface ObjxSessionInternalOptions<TTransaction = unknown>
+  extends ObjxSessionOptions<TTransaction> {
+  readonly boundExecutionContext?: ExecutionContext;
+  readonly pluginRuntime?: ObjxPluginRuntime;
+  readonly modelRegistrations?: Map<string, ModelPluginRegistration>;
+  readonly hasSessionPlugins?: boolean;
+}
+
 export interface ObjxExecuteOptions<TTransaction = unknown>
   extends SqlExecutionRequest<TTransaction>,
     ObjxQueryMaterializationOptions {
@@ -1505,12 +1513,17 @@ export class ObjxSession<TTransaction = unknown> {
   readonly #executionContextManager: ExecutionContextManager;
   readonly #observers: readonly ObjxSessionObserver[];
   readonly #pluginRuntime: ObjxPluginRuntime;
-  readonly #modelRegistrations = new Map<string, ModelPluginRegistration>();
+  readonly #modelRegistrations: Map<string, ModelPluginRegistration>;
   readonly #resultNormalizer: SqlResultNormalizer;
   readonly #hydrateByDefault: boolean | HydrationOptions;
   readonly #namingStrategy: ObjxNamingStrategy | undefined;
+  readonly #hasSessionPlugins: boolean;
+  readonly #boundExecutionContext: ExecutionContext | undefined;
+  readonly #boundExecutionRequest:
+    | Readonly<SqlExecutionRequest<TTransaction>>
+    | undefined;
 
-  constructor(options: ObjxSessionOptions<TTransaction>) {
+  constructor(options: ObjxSessionInternalOptions<TTransaction>) {
     this.#compiler = options.compiler ?? new ObjxSqlCompiler({
       ...(options.namingStrategy ? { namingStrategy: options.namingStrategy } : {}),
     });
@@ -1519,9 +1532,24 @@ export class ObjxSession<TTransaction = unknown> {
     this.#executionContextManager =
       options.executionContextManager ?? createExecutionContextManager();
     this.#observers = options.observers ?? [];
-    this.#pluginRuntime = createPluginRuntime(options.plugins);
+    this.#pluginRuntime = options.pluginRuntime ?? createPluginRuntime(options.plugins);
+    this.#hasSessionPlugins =
+      options.hasSessionPlugins ?? (options.plugins?.length ?? 0) > 0;
+    this.#modelRegistrations = options.modelRegistrations ?? new Map();
     this.#resultNormalizer = options.resultNormalizer ?? createDefaultSqlResultNormalizer();
     this.#hydrateByDefault = options.hydrateByDefault ?? false;
+    this.#boundExecutionContext = options.boundExecutionContext;
+    this.#boundExecutionRequest = this.#boundExecutionContext
+      ? ({
+          executionContext: this.#boundExecutionContext,
+          ...(this.#boundExecutionContext.transaction
+            ? {
+                transaction:
+                  this.#boundExecutionContext.transaction.raw as TTransaction,
+              }
+            : {}),
+        } satisfies SqlExecutionRequest<TTransaction>)
+      : undefined;
   }
 
   get executionContextManager(): ExecutionContextManager {
@@ -1529,7 +1557,66 @@ export class ObjxSession<TTransaction = unknown> {
   }
 
   currentExecutionContext(): ExecutionContext | undefined {
-    return this.#executionContextManager.current();
+    return this.#boundExecutionContext ?? this.#executionContextManager.current();
+  }
+
+  #createBoundSession(executionContext: ExecutionContext): ObjxSession<TTransaction> {
+    return new ObjxSession<TTransaction>({
+      compiler: this.#compiler,
+      driver: this.#driver,
+      ...(this.#namingStrategy ? { namingStrategy: this.#namingStrategy } : {}),
+      executionContextManager: this.#executionContextManager,
+      observers: this.#observers,
+      resultNormalizer: this.#resultNormalizer,
+      hydrateByDefault: this.#hydrateByDefault,
+      boundExecutionContext: executionContext,
+      pluginRuntime: this.#pluginRuntime,
+      modelRegistrations: this.#modelRegistrations,
+      hasSessionPlugins: this.#hasSessionPlugins,
+    });
+  }
+
+  #shouldRegisterModel(model: AnyModelDefinition): boolean {
+    return this.#hasSessionPlugins || model.plugins.length > 0;
+  }
+
+  #canUseInternalSelectFastPath(model: AnyModelDefinition): boolean {
+    return !this.#hasSessionPlugins && model.plugins.length === 0 && this.#observers.length === 0;
+  }
+
+  #createExecutionRequest(
+    executionContext: ExecutionContext | undefined,
+    transaction?: TTransaction,
+  ): SqlExecutionRequest<TTransaction> | undefined {
+    return executionContext || transaction !== undefined
+      ? {
+          ...(executionContext ? { executionContext } : {}),
+          ...(transaction !== undefined ? { transaction } : {}),
+        }
+      : undefined;
+  }
+
+  async #executeSelectFastPath(
+    query: SelectQueryNode | SelectQueryBuilder<any, any>,
+    options: ObjxQueryMaterializationOptions,
+    executionContext: ExecutionContext | undefined = this.currentExecutionContext(),
+  ): Promise<readonly Record<string, unknown>[]> {
+    const queryNode = resolveQueryNode(query) as SelectQueryNode;
+    const compiledQuery = this.#compiler.compile(queryNode);
+    const transaction = executionContext?.transaction?.raw as TTransaction | undefined;
+    const rawResult = await this.#driver.execute(
+      compiledQuery,
+      this.#createExecutionRequest(executionContext, transaction),
+    );
+    const normalizedResult = this.#resultNormalizer.normalize(rawResult, {
+      compiledQuery,
+      executionContext,
+    });
+    const rows = this.#materializeRows(queryNode.model, normalizedResult.rows, options);
+
+    return queryNode.eagerRelations.length > 0
+      ? this.#eagerLoadRelations(queryNode, rows, options)
+      : rows;
   }
 
   #getModelRegistration<TModel extends AnyModelDefinition>(
@@ -1973,10 +2060,16 @@ export class ObjxSession<TTransaction = unknown> {
     query: QueryNode | AnyQueryBuilder | RawSqlFragment | CompiledQuery,
     options: ObjxExecuteOptions<TTransaction> = {},
   ): Promise<unknown> {
-    const executionContext = options.executionContext ?? this.#executionContextManager.current();
+    const explicitExecutionContext = options.executionContext;
+    const executionContext =
+      explicitExecutionContext ??
+      this.#boundExecutionContext ??
+      this.#executionContextManager.current();
     const originalQueryNode = this.#resolveStructuredQueryNode(query);
     const registration = originalQueryNode
-      ? this.#getModelRegistration(originalQueryNode.model)
+      ? this.#shouldRegisterModel(originalQueryNode.model)
+        ? this.#getModelRegistration(originalQueryNode.model)
+        : undefined
       : undefined;
     const plugins = registration?.plugins;
     const hasPlugins = (plugins?.length ?? 0) > 0;
@@ -2012,16 +2105,47 @@ export class ObjxSession<TTransaction = unknown> {
           : this.compile(query);
     const hasObservers = this.#observers.length > 0;
     const startedAt = hasObservers ? new Date() : undefined;
+    const explicitTransaction = options.transaction;
     const transaction =
-      options.transaction ??
+      explicitTransaction ??
       (executionContext?.transaction?.raw as TTransaction | undefined);
     const request =
-      executionContext || transaction !== undefined
-        ? {
-            ...(executionContext ? { executionContext } : {}),
-            ...(transaction !== undefined ? { transaction } : {}),
-          }
-        : undefined;
+      explicitExecutionContext !== undefined || explicitTransaction !== undefined
+        ? this.#createExecutionRequest(executionContext, transaction)
+        : this.#boundExecutionRequest ??
+          this.#createExecutionRequest(executionContext, transaction);
+    const canUseSimpleExecution =
+      !registration &&
+      !hasObservers &&
+      options.validationOperation === undefined;
+
+    if (canUseSimpleExecution) {
+      try {
+        const rawResult = await this.#driver.execute(compiledQuery, request);
+        const normalizedResult = this.#resultNormalizer.normalize(rawResult, {
+          compiledQuery,
+          executionContext,
+        });
+        const materializedResult = await this.#materializeResult(queryNode, normalizedResult, options);
+
+        return materializedResult;
+      } catch (error) {
+        const errorOptions: {
+          compiledQuery: CompiledQuery;
+          executionContext?: ExecutionContext;
+          cause: unknown;
+        } = {
+          compiledQuery,
+          cause: error,
+          ...(executionContext ? { executionContext } : {}),
+        };
+
+        throw new SqlExecutionError(
+          'Failed to execute SQL query.',
+          errorOptions,
+        );
+      }
+    }
 
     if (registration && pluginContext && plugins) {
       this.#pluginRuntime.emitQueryCreate(pluginContext, plugins);
@@ -2750,10 +2874,12 @@ export class ObjxSession<TTransaction = unknown> {
                 : {
                     transaction: transactionScope,
                   };
+        const executionContext = this.#executionContextManager.create(contextInit);
+        const transactionSession = this.#createBoundSession(executionContext);
 
         return this.#executionContextManager.run(
-          contextInit,
-          () => callback(this),
+          executionContext,
+          () => callback(transactionSession),
         );
       }, parentTransaction || options.metadata
         ? {
@@ -3381,17 +3507,37 @@ export class ObjxSession<TTransaction = unknown> {
     options: ObjxQueryMaterializationOptions,
   ): Promise<readonly Record<string, unknown>[] | undefined> {
     if (rows.length === 1 && queryNode.limit === 1) {
-      const hydratedRows = this.#cloneRows(rows);
+      const relationName = queryNode.eagerRelations[0];
+      const relation =
+        queryNode.eagerRelations.length === 1 && relationName && !relationName.includes('.')
+          ? queryNode.model.relations[relationName]
+          : undefined;
+      const clonedRow = {
+        ...rows[0]!,
+      };
+
+      if (relationName && relation) {
+        clonedRow[relationName] = await this.#loadSingleRowRelation(
+          queryNode.model,
+          clonedRow,
+          relationName,
+          relation,
+          options,
+        );
+
+        return [clonedRow];
+      }
+
       const eagerRelationTree = this.#buildEagerRelationTree(queryNode.eagerRelations);
 
       await this.#attachSingleRowRelationTree(
         queryNode.model,
-        hydratedRows[0]!,
+        clonedRow,
         eagerRelationTree,
         options,
       );
 
-      return hydratedRows;
+      return [clonedRow];
     }
 
     if (queryNode.eagerRelations.length !== 1) {
@@ -3515,19 +3661,28 @@ export class ObjxSession<TTransaction = unknown> {
     }
 
     if (relation.kind === 'hasMany') {
-      return this.execute(
-        relation.target().query().where(
-          op.eq(relation.to as never, sourceValue as never),
-        ),
-        executeOptions,
-      ) as Promise<readonly Record<string, unknown>[]>;
+      const targetQuery = relation.target().query().where(
+        op.eq(relation.to as never, sourceValue as never),
+      );
+
+      return this.#canUseInternalSelectFastPath(relation.target())
+        ? this.#executeSelectFastPath(targetQuery, executeOptions)
+        : this.execute(
+            targetQuery,
+            executeOptions,
+          ) as Promise<readonly Record<string, unknown>[]>;
     }
 
-    const relatedRows = await this.execute(
-      relation.target().query().where(
+    const targetQuery = relation.target().query().where(
         op.eq(relation.to as never, sourceValue as never),
-      ).limit(1),
-      executeOptions,
+      ).limit(1);
+    const relatedRows = await (
+      this.#canUseInternalSelectFastPath(relation.target())
+        ? this.#executeSelectFastPath(targetQuery, executeOptions)
+        : this.execute(
+            targetQuery,
+            executeOptions,
+          )
     ) as readonly Record<string, unknown>[];
 
     return relatedRows[0] ?? null;
@@ -3581,11 +3736,16 @@ export class ObjxSession<TTransaction = unknown> {
       executeOptions.hydrate = options.hydrate;
     }
 
-    const targetRows = await this.execute(
-      relation.target().query().where(
+    const targetQuery = relation.target().query().where(
         op.in(relation.to as never, targetValues as readonly never[]),
-      ),
-      executeOptions,
+      );
+    const targetRows = await (
+      this.#canUseInternalSelectFastPath(relation.target())
+        ? this.#executeSelectFastPath(targetQuery, executeOptions)
+        : this.execute(
+            targetQuery,
+            executeOptions,
+          )
     ) as readonly Record<string, unknown>[];
 
     const targetByKey = new Map<unknown, Record<string, unknown>>();
@@ -3789,16 +3949,23 @@ export class ObjxSession<TTransaction = unknown> {
       executeOptions.hydrate = options.hydrate;
     }
 
-    const targetRows = await this.execute(
-      relation.target().query().where(
+    const targetQuery = relation.target().query().where(
         op.in(relation.to as never, sourceValues as readonly never[]),
-      ),
-      executeOptions,
+      );
+    const targetRows = await (
+      this.#canUseInternalSelectFastPath(relation.target())
+        ? this.#executeSelectFastPath(targetQuery, executeOptions)
+        : this.execute(
+            targetQuery,
+            executeOptions,
+          )
     ) as readonly Record<string, unknown>[];
 
     if (relation.kind === 'hasMany') {
       if (rows.length === 1) {
-        rows[0]![relationName] = targetRows.length === 0 ? [] : Array.from(targetRows);
+        rows[0]![relationName] = targetRows.length === 0
+          ? []
+          : (targetRows as Record<string, unknown>[]);
         return;
       }
 
@@ -3910,11 +4077,16 @@ export class ObjxSession<TTransaction = unknown> {
       executeOptions.hydrate = options.hydrate;
     }
 
-    const targetRows = await this.execute(
-      relation.target().query().where(
+    const targetQuery = relation.target().query().where(
         op.in(relation.to as never, targetValues as readonly never[]),
-      ),
-      executeOptions,
+      );
+    const targetRows = await (
+      this.#canUseInternalSelectFastPath(relation.target())
+        ? this.#executeSelectFastPath(targetQuery, executeOptions)
+        : this.execute(
+            targetQuery,
+            executeOptions,
+          )
     ) as readonly Record<string, unknown>[];
 
     const targetsByKey = new Map<string | null | undefined, Record<string, unknown>[]>();

@@ -94,6 +94,12 @@ npm run benchmark:setup:host
 npm run benchmark:host
 ```
 
+Importante:
+
+- o modo `host` serve para iteracao e profiling local;
+- resultados em `host` podem oscilar bastante por carga da maquina, scheduler, antivirus e I/O concorrente;
+- comparativos que entram em release note, baseline ou decisao de performance devem usar o perfil Docker oficial.
+
 ## Comandos Locais Do Subprojeto
 
 Se voce quiser executar diretamente dentro desta pasta:

@@ -837,5 +837,2087 @@
         "avgMs": 11.207658
       }
     ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:43:09.757Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 20,
+      "iterations": 80,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 676.58,
+        "avgMs": 1.47802
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 263.67,
+        "avgMs": 3.792591
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 440.13,
+        "avgMs": 2.272062
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 737.67,
+        "avgMs": 1.355613
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 213.7,
+        "avgMs": 4.679439
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 87.24,
+        "avgMs": 11.463149
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:44:53.030Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 50,
+      "iterations": 250,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 858.27,
+        "avgMs": 1.165138
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 399.42,
+        "avgMs": 2.50365
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 719.07,
+        "avgMs": 1.390694
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 699.57,
+        "avgMs": 1.429452
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 243.55,
+        "avgMs": 4.105965
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 100.22,
+        "avgMs": 9.978454
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 900.05,
+        "avgMs": 1.111053
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 356.15,
+        "avgMs": 2.807782
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 681.26,
+        "avgMs": 1.467877
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 676.54,
+        "avgMs": 1.478112
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 259.82,
+        "avgMs": 3.848826
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 123.7,
+        "avgMs": 8.083778
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 481.08,
+        "avgMs": 2.078644
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 394.79,
+        "avgMs": 2.53302
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 431.47,
+        "avgMs": 2.317662
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 584.51,
+        "avgMs": 1.710844
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 244.45,
+        "avgMs": 4.090874
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 106.67,
+        "avgMs": 9.374633
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 714.9,
+        "avgMs": 1.398789
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 609.4,
+        "avgMs": 1.640958
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 546.16,
+        "avgMs": 1.830964
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 735.98,
+        "avgMs": 1.35874
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 252.75,
+        "avgMs": 3.956556
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 113.93,
+        "avgMs": 8.777258
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:50:45.167Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 20,
+      "iterations": 80,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1179.86,
+        "avgMs": 0.847555
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 463.92,
+        "avgMs": 2.155543
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 590.29,
+        "avgMs": 1.694074
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 590.18,
+        "avgMs": 1.694398
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 268.66,
+        "avgMs": 3.722165
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 140.69,
+        "avgMs": 7.10762
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 639.63,
+        "avgMs": 1.563415
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 381.17,
+        "avgMs": 2.623487
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 775.23,
+        "avgMs": 1.28994
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1212.73,
+        "avgMs": 0.824588
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 289.92,
+        "avgMs": 3.449246
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 153.72,
+        "avgMs": 6.505195
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1094.48,
+        "avgMs": 0.913674
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 841.73,
+        "avgMs": 1.188036
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 960.73,
+        "avgMs": 1.040879
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 860.56,
+        "avgMs": 1.162034
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 223.31,
+        "avgMs": 4.47809
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 142,
+        "avgMs": 7.042445
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1231.55,
+        "avgMs": 0.811984
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 1056.22,
+        "avgMs": 0.946769
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 919.83,
+        "avgMs": 1.087156
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 886.28,
+        "avgMs": 1.128315
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 301.86,
+        "avgMs": 3.312838
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 141.58,
+        "avgMs": 7.06315
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:53:16.579Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 20,
+      "iterations": 80,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 486.98,
+        "avgMs": 2.053455
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 259.59,
+        "avgMs": 3.852254
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 474.76,
+        "avgMs": 2.106309
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 371.37,
+        "avgMs": 2.692716
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 161.39,
+        "avgMs": 6.196274
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 97.86,
+        "avgMs": 10.218895
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 394.13,
+        "avgMs": 2.53721
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 209.14,
+        "avgMs": 4.781375
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 430.61,
+        "avgMs": 2.322275
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 540.16,
+        "avgMs": 1.851311
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 219.88,
+        "avgMs": 4.54802
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 111.84,
+        "avgMs": 8.941316
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 908.74,
+        "avgMs": 1.10043
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 403.72,
+        "avgMs": 2.476935
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 578.14,
+        "avgMs": 1.729692
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 766.25,
+        "avgMs": 1.30506
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 239.67,
+        "avgMs": 4.172406
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 100.34,
+        "avgMs": 9.965779
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 740.89,
+        "avgMs": 1.349725
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 586.49,
+        "avgMs": 1.70507
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 504.68,
+        "avgMs": 1.98146
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 503.37,
+        "avgMs": 1.986605
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 239.57,
+        "avgMs": 4.174136
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 88.05,
+        "avgMs": 11.357195
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T17:01:40.302Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 50,
+      "iterations": 250,
+      "pageSize": 25,
+      "dialects": [
+        "postgres",
+        "mysql"
+      ],
+      "orms": [
+        "objx",
+        "prisma",
+        "sequelize",
+        "knex",
+        "drizzle",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1514.14,
+        "avgMs": 0.66044
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 683.34,
+        "avgMs": 1.463402
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 935.33,
+        "avgMs": 1.06914
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1291.52,
+        "avgMs": 0.774282
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 330.63,
+        "avgMs": 3.024548
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 181.22,
+        "avgMs": 5.518052
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1219.65,
+        "avgMs": 0.81991
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 490.31,
+        "avgMs": 2.039525
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 782.27,
+        "avgMs": 1.278332
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1050.54,
+        "avgMs": 0.951893
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 279.84,
+        "avgMs": 3.573488
+      },
+      {
+        "adapter": "prisma-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 146.44,
+        "avgMs": 6.828818
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1343.87,
+        "avgMs": 0.744118
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 841.57,
+        "avgMs": 1.188249
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 741.5,
+        "avgMs": 1.34861
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1160.83,
+        "avgMs": 0.861454
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 287.86,
+        "avgMs": 3.473904
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 159.35,
+        "avgMs": 6.275638
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1295.7,
+        "avgMs": 0.771784
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 613.78,
+        "avgMs": 1.629255
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1156.22,
+        "avgMs": 0.864888
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1086.26,
+        "avgMs": 0.920586
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 273.75,
+        "avgMs": 3.652961
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 173.85,
+        "avgMs": 5.752049
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1396.69,
+        "avgMs": 0.715976
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 635.66,
+        "avgMs": 1.573157
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 948.71,
+        "avgMs": 1.054063
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1200.7,
+        "avgMs": 0.832845
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 329.78,
+        "avgMs": 3.032297
+      },
+      {
+        "adapter": "drizzle-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 169.67,
+        "avgMs": 5.893831
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1156.46,
+        "avgMs": 0.864705
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 884.66,
+        "avgMs": 1.130374
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1134.97,
+        "avgMs": 0.881082
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1166.07,
+        "avgMs": 0.857585
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 320.21,
+        "avgMs": 3.122948
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 164.2,
+        "avgMs": 6.090096
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 1113.07,
+        "avgMs": 0.898416
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 682.22,
+        "avgMs": 1.465799
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 970.98,
+        "avgMs": 1.02989
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 1208.5,
+        "avgMs": 0.827474
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 119.09,
+        "avgMs": 8.396787
+      },
+      {
+        "adapter": "objx-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 92.87,
+        "avgMs": 10.767272
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 1117.05,
+        "avgMs": 0.895211
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 551.02,
+        "avgMs": 1.814826
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 714.02,
+        "avgMs": 1.400524
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 1041.51,
+        "avgMs": 0.96014
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 92.38,
+        "avgMs": 10.825173
+      },
+      {
+        "adapter": "prisma-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 77.42,
+        "avgMs": 12.916841
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 941.27,
+        "avgMs": 1.062395
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 849.49,
+        "avgMs": 1.177182
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 781.5,
+        "avgMs": 1.279582
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 1045.24,
+        "avgMs": 0.95672
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 112.55,
+        "avgMs": 8.885284
+      },
+      {
+        "adapter": "sequelize-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 61.21,
+        "avgMs": 16.336718
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 1054.87,
+        "avgMs": 0.947987
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 647.87,
+        "avgMs": 1.543522
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 1084.89,
+        "avgMs": 0.921752
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 875.42,
+        "avgMs": 1.142303
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 119.54,
+        "avgMs": 8.365153
+      },
+      {
+        "adapter": "knex-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 91.48,
+        "avgMs": 10.930829
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 1007.06,
+        "avgMs": 0.992993
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 582.28,
+        "avgMs": 1.7174
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 843.92,
+        "avgMs": 1.184949
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 1015.35,
+        "avgMs": 0.984884
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 208.89,
+        "avgMs": 4.787215
+      },
+      {
+        "adapter": "drizzle-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 128.42,
+        "avgMs": 7.786794
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "find-by-id",
+        "opsPerSec": 817.29,
+        "avgMs": 1.223563
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "find-with-pets",
+        "opsPerSec": 1087.71,
+        "avgMs": 0.919361
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "list-page",
+        "opsPerSec": 783.71,
+        "avgMs": 1.27598
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "count-active",
+        "opsPerSec": 1078.37,
+        "avgMs": 0.927322
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "update-active",
+        "opsPerSec": 201.93,
+        "avgMs": 4.952236
+      },
+      {
+        "adapter": "typeorm-mysql",
+        "dialect": "mysql",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 126.74,
+        "avgMs": 7.890196
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T17:03:21.286Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 20,
+      "iterations": 80,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1050.09,
+        "avgMs": 0.952298
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 643.76,
+        "avgMs": 1.553365
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1090.64,
+        "avgMs": 0.916891
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1210.02,
+        "avgMs": 0.82643
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 458.67,
+        "avgMs": 2.180196
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 205.86,
+        "avgMs": 4.857654
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1272.63,
+        "avgMs": 0.785774
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 561.35,
+        "avgMs": 1.781412
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1185.03,
+        "avgMs": 0.843861
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1149.6,
+        "avgMs": 0.869865
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 442.91,
+        "avgMs": 2.25778
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 210.08,
+        "avgMs": 4.75999
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1071.8,
+        "avgMs": 0.93301
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 835.89,
+        "avgMs": 1.196332
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 923.46,
+        "avgMs": 1.082887
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1162.34,
+        "avgMs": 0.860335
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 362.48,
+        "avgMs": 2.758759
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 193.89,
+        "avgMs": 5.157476
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1201.08,
+        "avgMs": 0.832584
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 1135.36,
+        "avgMs": 0.880775
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1170.92,
+        "avgMs": 0.854027
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1217.57,
+        "avgMs": 0.821306
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 468.31,
+        "avgMs": 2.13534
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 231.14,
+        "avgMs": 4.32635
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T17:03:57.634Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 20,
+      "iterations": 100,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1019.74,
+        "avgMs": 0.980641
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 495.7,
+        "avgMs": 2.017346
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 846.37,
+        "avgMs": 1.18151
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1249.21,
+        "avgMs": 0.800506
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 533.98,
+        "avgMs": 1.872723
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 211.59,
+        "avgMs": 4.726195
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 946.28,
+        "avgMs": 1.056773
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 501.02,
+        "avgMs": 1.995909
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1166.74,
+        "avgMs": 0.857089
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1035.28,
+        "avgMs": 0.96592
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 500.58,
+        "avgMs": 1.997676
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 205.6,
+        "avgMs": 4.86378
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1207.46,
+        "avgMs": 0.828182
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 840.4,
+        "avgMs": 1.189915
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 868.73,
+        "avgMs": 1.151111
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1160.39,
+        "avgMs": 0.861778
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 344.91,
+        "avgMs": 2.899277
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 180.77,
+        "avgMs": 5.531954
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1305.76,
+        "avgMs": 0.765838
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 1030.18,
+        "avgMs": 0.9707
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1014.26,
+        "avgMs": 0.985945
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1026.12,
+        "avgMs": 0.974544
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 489.92,
+        "avgMs": 2.041136
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 208.74,
+        "avgMs": 4.790625
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T17:04:19.331Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 50,
+      "iterations": 100,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 947.87,
+        "avgMs": 1.054994
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 613.32,
+        "avgMs": 1.63047
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 1030.49,
+        "avgMs": 0.97041
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1540.93,
+        "avgMs": 0.648958
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 491.46,
+        "avgMs": 2.034761
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 223.79,
+        "avgMs": 4.468435
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1230.07,
+        "avgMs": 0.812965
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 532.26,
+        "avgMs": 1.878775
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 864.97,
+        "avgMs": 1.15611
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1215.74,
+        "avgMs": 0.822544
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 444.7,
+        "avgMs": 2.248698
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 192.26,
+        "avgMs": 5.201163
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1129.05,
+        "avgMs": 0.885699
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 733.97,
+        "avgMs": 1.36246
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 800.88,
+        "avgMs": 1.248624
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 956.52,
+        "avgMs": 1.04546
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 388.54,
+        "avgMs": 2.573726
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 180.32,
+        "avgMs": 5.545627
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1337.47,
+        "avgMs": 0.747682
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 1073.19,
+        "avgMs": 0.9318
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 786.99,
+        "avgMs": 1.270671
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1148,
+        "avgMs": 0.871079
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 437.13,
+        "avgMs": 2.287672
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 189.19,
+        "avgMs": 5.285738
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T17:06:39.662Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "people": 3000,
+      "petsPerPerson": 3,
+      "warmup": 100,
+      "iterations": 1000,
+      "pageSize": 25,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1202.17,
+        "avgMs": 0.831827
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 598.42,
+        "avgMs": 1.671069
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 982.69,
+        "avgMs": 1.017615
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 1246.41,
+        "avgMs": 0.802306
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 427.23,
+        "avgMs": 2.340673
+      },
+      {
+        "adapter": "objx-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 182.56,
+        "avgMs": 5.477627
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1133.33,
+        "avgMs": 0.882359
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 607.94,
+        "avgMs": 1.644906
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 855.64,
+        "avgMs": 1.168712
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 956.09,
+        "avgMs": 1.045927
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 496.82,
+        "avgMs": 2.012819
+      },
+      {
+        "adapter": "knex-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 168.56,
+        "avgMs": 5.932573
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 1011.99,
+        "avgMs": 0.988148
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 831.54,
+        "avgMs": 1.202584
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 881.02,
+        "avgMs": 1.135046
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 540.27,
+        "avgMs": 1.850921
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 359.73,
+        "avgMs": 2.779844
+      },
+      {
+        "adapter": "sequelize-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 95.31,
+        "avgMs": 10.492379
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-by-id",
+        "opsPerSec": 717.71,
+        "avgMs": 1.393316
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "find-with-pets",
+        "opsPerSec": 836.64,
+        "avgMs": 1.195261
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "list-page",
+        "opsPerSec": 819.85,
+        "avgMs": 1.219742
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "count-active",
+        "opsPerSec": 956.96,
+        "avgMs": 1.044978
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "update-active",
+        "opsPerSec": 453.53,
+        "avgMs": 2.204925
+      },
+      {
+        "adapter": "typeorm-postgres",
+        "dialect": "postgres",
+        "scenario": "transaction-read-write",
+        "opsPerSec": 156.57,
+        "avgMs": 6.386721
+      }
+    ]
   }
 ]

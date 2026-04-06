@@ -246,5 +246,255 @@
         "opsPerSec": 470.31
       }
     ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:50:40.250Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "warmup": 20,
+      "iterations": 80,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 126.205,
+        "avgMs": 1.577568,
+        "opsPerSec": 633.89
+      },
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 171.933,
+        "avgMs": 2.14916,
+        "opsPerSec": 465.3
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 236.884,
+        "avgMs": 2.96105,
+        "opsPerSec": 337.72
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 194.18,
+        "avgMs": 2.427251,
+        "opsPerSec": 411.99
+      },
+      {
+        "orm": "sequelize",
+        "dialect": "postgres",
+        "adapter": "sequelize-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 160.248,
+        "avgMs": 2.003101,
+        "opsPerSec": 499.23
+      },
+      {
+        "orm": "sequelize",
+        "dialect": "postgres",
+        "adapter": "sequelize-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 168.184,
+        "avgMs": 2.102299,
+        "opsPerSec": 475.67
+      },
+      {
+        "orm": "typeorm",
+        "dialect": "postgres",
+        "adapter": "typeorm-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 142.02,
+        "avgMs": 1.775256,
+        "opsPerSec": 563.3
+      },
+      {
+        "orm": "typeorm",
+        "dialect": "postgres",
+        "adapter": "typeorm-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 107.065,
+        "avgMs": 1.338315,
+        "opsPerSec": 747.21
+      }
+    ]
+  },
+  {
+    "generatedAt": "2026-04-06T16:53:09.414Z",
+    "runtime": {
+      "node": "v24.13.0",
+      "platform": "win32",
+      "arch": "x64"
+    },
+    "environment": {
+      "mode": "host",
+      "profile": "host-local",
+      "resources": {
+        "stackCpus": null,
+        "stackMemory": null,
+        "runnerCpus": null,
+        "runnerMemory": null,
+        "postgresCpus": null,
+        "postgresMemory": null,
+        "mysqlCpus": null,
+        "mysqlMemory": null
+      }
+    },
+    "config": {
+      "warmup": 20,
+      "iterations": 80,
+      "dialects": [
+        "postgres"
+      ],
+      "orms": [
+        "objx",
+        "knex",
+        "sequelize",
+        "typeorm"
+      ]
+    },
+    "results": [
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 239.746,
+        "avgMs": 2.99683,
+        "opsPerSec": 333.69
+      },
+      {
+        "orm": "objx",
+        "dialect": "postgres",
+        "adapter": "objx-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 260.644,
+        "avgMs": 3.258046,
+        "opsPerSec": 306.93
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 246.161,
+        "avgMs": 3.077014,
+        "opsPerSec": 324.99
+      },
+      {
+        "orm": "knex",
+        "dialect": "postgres",
+        "adapter": "knex-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 320.568,
+        "avgMs": 4.007104,
+        "opsPerSec": 249.56
+      },
+      {
+        "orm": "sequelize",
+        "dialect": "postgres",
+        "adapter": "sequelize-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 274.089,
+        "avgMs": 3.42611,
+        "opsPerSec": 291.88
+      },
+      {
+        "orm": "sequelize",
+        "dialect": "postgres",
+        "adapter": "sequelize-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 203.967,
+        "avgMs": 2.549584,
+        "opsPerSec": 392.22
+      },
+      {
+        "orm": "typeorm",
+        "dialect": "postgres",
+        "adapter": "typeorm-postgres",
+        "scenario": "begin-commit",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 208.702,
+        "avgMs": 2.608781,
+        "opsPerSec": 383.32
+      },
+      {
+        "orm": "typeorm",
+        "dialect": "postgres",
+        "adapter": "typeorm-postgres",
+        "scenario": "begin-rollback",
+        "iterations": 80,
+        "warmup": 20,
+        "totalMs": 223.272,
+        "avgMs": 2.790903,
+        "opsPerSec": 358.31
+      }
+    ]
   }
 ]
