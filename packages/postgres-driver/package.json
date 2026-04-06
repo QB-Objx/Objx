@@ -9,6 +9,14 @@
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QB-Objx/Objx"
+  },
+  "homepage": "https://github.com/QB-Objx/Objx",
+  "bugs": {
+    "url": "https://github.com/QB-Objx/Objx/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
