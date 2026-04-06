@@ -9,7 +9,7 @@ Current project status:
 - official drivers for SQLite, Postgres, and MySQL
 - `insertGraph`, `upsertGraph`, `relate`, `unrelate`
 - simple eager loading, nested eager loading, and composed relation expressions
-- official plugins for `timestamps`, `soft delete`, `audit trail`, and `tenant scope`
+- official plugins for `timestamps`, `snake case naming`, `soft delete`, `audit trail`, and `tenant scope`
 - codegen, SQLite introspection, templates, typed migrations, and typed seeds
 
 ## Packages
@@ -217,6 +217,49 @@ export const Task = defineModel({
 ```
 
 Use `.generated()` for columns that are filled by the runtime, plugins or graph mutation plumbing, such as tenant ids and relation-owned foreign keys.
+
+## Column Naming
+
+The explicit path is configuring `dbName` per column:
+
+```ts
+import { col, defineModel } from '@qbobjx/core';
+
+export const Account = defineModel({
+  table: 'accounts',
+  columns: {
+    id: col.int().primary(),
+    tenantId: col.text().configure({ dbName: 'tenant_id' }),
+    createdAt: col.timestamp().configure({ dbName: 'created_at' }),
+  },
+});
+```
+
+If you prefer convention over repetition, use the official snake case naming plugin:
+
+```ts
+import { col, defineModel } from '@qbobjx/core';
+import { createSnakeCaseNamingPlugin } from '@qbobjx/plugins';
+
+export const Account = defineModel({
+  table: 'accounts',
+  columns: {
+    id: col.int().primary(),
+    tenantId: col.text(),
+    createdAt: col.timestamp(),
+  },
+  plugins: [
+    createSnakeCaseNamingPlugin({
+      exclude: ['id'],
+      overrides: {
+        createdAt: 'created_on',
+      },
+    }),
+  ],
+});
+```
+
+The SQL compiler uses the configured database column names for `select`, `insert`, `update`, and predicates, and hydration maps result rows back to model keys.
 
 ## Relations
 
@@ -694,6 +737,7 @@ Plugins are attached to models:
 ```ts
 import {
   createAuditTrailPlugin,
+  createSnakeCaseNamingPlugin,
   createSoftDeletePlugin,
   createTenantScopePlugin,
   createTimestampsPlugin,
@@ -712,6 +756,7 @@ const Article = defineModel({
     deletedAt: col.timestamp().nullable(),
   },
   plugins: [
+    createSnakeCaseNamingPlugin(),
     createTimestampsPlugin(),
     createTenantScopePlugin(),
     createSoftDeletePlugin(),
@@ -724,6 +769,15 @@ const Article = defineModel({
   ],
 });
 ```
+
+### snake case naming
+
+`createSnakeCaseNamingPlugin()` maps model keys like `tenantId` and `createdAt` to `tenant_id` and `created_at` during model definition.
+
+Options:
+
+- `exclude`: keeps selected model keys unchanged
+- `overrides`: provides explicit physical column names for specific keys
 
 ### soft delete
 

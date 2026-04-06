@@ -555,7 +555,7 @@ export const mysqlDialect = createBuiltinDialect(
   false,
 );
 
-const KNEX_DIALECT_ALIASES = Object.freeze({
+const DIALECT_NAME_ALIASES = Object.freeze({
   pg: 'postgres',
   postgresql: 'postgres',
   pgnative: 'postgres',
@@ -576,7 +576,7 @@ const BUILTIN_SQL_DIALECTS = Object.freeze({
 export function resolveSqlDialectName(name: string): BuiltinSqlDialectName {
   const normalized = name.trim().toLowerCase();
   const resolved =
-    KNEX_DIALECT_ALIASES[normalized as keyof typeof KNEX_DIALECT_ALIASES] ?? normalized;
+    DIALECT_NAME_ALIASES[normalized as keyof typeof DIALECT_NAME_ALIASES] ?? normalized;
 
   if (resolved in BUILTIN_SQL_DIALECTS) {
     return resolved as BuiltinSqlDialectName;
@@ -682,12 +682,13 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       ast.selections.length > 0
         ? ast.selections.map((selection) => this.#compileSelection(selection, context)).join(', ')
         : Object.keys(ast.model.columnDefinitions)
-            .map((columnName) =>
-              `${this.#columnReference(ast.model.table, columnName, context)} as ${this.#quote(
+            .map((columnName) => {
+              const dbColumnName = this.#resolveModelColumnName(ast.model, columnName);
+              return `${this.#columnReference(ast.model.table, dbColumnName, context)} as ${this.#quote(
                 columnName,
                 context,
-              )}`,
-            )
+              )}`;
+            })
             .join(', ');
 
     let sql = `select ${selections} from ${this.#quote(ast.model.table, context)}`;
@@ -728,7 +729,9 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
       return `insert into ${this.#quote(ast.model.table, context)} default values`;
     }
 
-    const columnsSql = orderedColumns.map((columnName) => this.#quote(columnName, context)).join(', ');
+    const columnsSql = orderedColumns
+      .map((columnName) => this.#quote(this.#resolveModelColumnName(ast.model, columnName), context))
+      .join(', ');
     const rowsSql = ast.rows
       .map((row) => {
         const valuesSql = orderedColumns.map((columnName) => {
@@ -766,7 +769,8 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
     const assignmentsSql = orderedColumns
       .map((columnName) => {
         const value = ast.values[columnName];
-        return `${this.#quote(columnName, context)} = ${context.pushParameter(value, columnName)}`;
+        const dbColumnName = this.#resolveModelColumnName(ast.model, columnName);
+        return `${this.#quote(dbColumnName, context)} = ${context.pushParameter(value, columnName)}`;
       })
       .join(', ');
 
@@ -841,12 +845,13 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
 
   #compileSelection(selection: SelectionNode, context: CompilationContext): string {
     const base = this.#compileColumn(selection.column, context);
+    const alias = selection.alias ?? this.#resolveSelectionAlias(selection);
 
-    if (!selection.alias) {
+    if (!alias) {
       return base;
     }
 
-    return `${base} as ${this.#quote(selection.alias, context)}`;
+    return `${base} as ${this.#quote(alias, context)}`;
   }
 
   #compileJoin(join: JoinNode, context: CompilationContext): string {
@@ -911,7 +916,36 @@ export class ObjxSqlCompiler implements SqlCompiler<QueryNode>, RawSqlCompiler {
   }
 
   #compileColumn(column: AnyModelColumnReference, context: CompilationContext): string {
-    return this.#columnReference(column.table, column.key, context);
+    return this.#columnReference(column.table, this.#resolveColumnReferenceName(column), context);
+  }
+
+  #resolveSelectionAlias(selection: SelectionNode): string | undefined {
+    if (selection.alias) {
+      return selection.alias;
+    }
+
+    return this.#resolveColumnReferenceName(selection.column) !== selection.column.key
+      ? selection.column.key
+      : undefined;
+  }
+
+  #resolveColumnReferenceName(column: AnyModelColumnReference): string {
+    return this.#resolveDbColumnName(column.key, column.definition);
+  }
+
+  #resolveModelColumnName(model: AnyModelDefinition, columnKey: string): string {
+    const definition = (model.columnDefinitions as Record<string, AnyColumnDefinition>)[columnKey];
+    return this.#resolveDbColumnName(columnKey, definition);
+  }
+
+  #resolveDbColumnName(
+    columnKey: string,
+    definition: AnyColumnDefinition | undefined,
+  ): string {
+    const configured = definition?.config.dbName;
+    return typeof configured === 'string' && configured.trim().length > 0
+      ? configured
+      : columnKey;
   }
 
   #compileIdentifierPath(path: readonly string[], context: CompilationContext): string {

@@ -27,6 +27,7 @@ import {
 } from '@qbobjx/sql-engine';
 import {
   createAuditTrailPlugin,
+  createSnakeCaseNamingPlugin,
   createSoftDeletePlugin,
   createTenantScopePlugin,
 } from '@qbobjx/plugins';
@@ -104,6 +105,16 @@ class FakeDriver {
         ],
       ],
       ['snowflake_projects', []],
+      [
+        'snake_accounts',
+        [
+          {
+            id: '1',
+            tenant_id: 'tenant_a',
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+      ],
       ['person_pets', []],
     ]);
     this.sequences = new Map([
@@ -120,6 +131,7 @@ class FakeDriver {
       ['pet_toys', 201],
       ['articles', 2],
       ['snowflake_projects', 0],
+      ['snake_accounts', 1],
       ['person_pets', 0],
     ]);
     this.transactionCount = 0;
@@ -1092,6 +1104,17 @@ const SnowflakeProject = defineModel({
   plugins: [createTenantScopePlugin()],
 });
 
+const SnakeCaseAccount = defineModel({
+  name: 'SnakeCaseAccount',
+  table: 'snake_accounts',
+  columns: {
+    id: col.int().primary(),
+    tenantId: col.text(),
+    createdAt: col.timestamp(),
+  },
+  plugins: [createSnakeCaseNamingPlugin()],
+});
+
 const tests = [
   [
     'bigint columns hydrate bigint values from result rows',
@@ -1145,7 +1168,7 @@ const tests = [
     },
   ],
   [
-    'compiler resolves knex-style dialect aliases',
+    'compiler resolves driver dialect aliases',
     async () => {
       assert.equal(resolveSqlDialectName('pg'), 'postgres');
       assert.equal(resolveSqlDialectName('mysql2'), 'mysql');
@@ -1161,6 +1184,41 @@ const tests = [
       assert.match(compiled.sql, /from `people`/i);
       assert.match(compiled.sql, /where `people`\.`id` = \?/i);
       assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), [1]);
+    },
+  ],
+  [
+    'compiler maps model columns to snake_case when naming plugin is enabled',
+    async () => {
+      const compiled = new ObjxSqlCompiler({
+        dialect: 'sqlite3',
+      }).compile(
+        SnakeCaseAccount.query().where(({ tenantId }, operators) => operators.eq(tenantId, 'tenant_a')),
+      );
+
+      assert.match(compiled.sql, /from "snake_accounts"/i);
+      assert.match(compiled.sql, /"snake_accounts"\."tenant_id"\s+as\s+"tenantId"/i);
+      assert.match(compiled.sql, /where "snake_accounts"\."tenant_id" = \?/i);
+      assert.deepEqual(compiled.parameters.map((parameter) => parameter.value), ['tenant_a']);
+    },
+  ],
+  [
+    'hydration maps snake_case result fields back to model keys',
+    async () => {
+      const driver = new FakeDriver();
+      const session = createSession({
+        driver,
+        hydrateByDefault: true,
+      });
+
+      const rows = await session.execute(
+        SnakeCaseAccount.query().where(({ tenantId }, operators) => operators.eq(tenantId, 'tenant_a')),
+      );
+
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].tenantId, 'tenant_a');
+      assert.ok(rows[0].createdAt instanceof Date);
+      assert.equal(rows[0].tenant_id, undefined);
+      assert.equal(rows[0].created_at, undefined);
     },
   ],
   [

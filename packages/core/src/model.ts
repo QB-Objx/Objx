@@ -1,4 +1,4 @@
-import type { ObjxPlugin } from './plugin.js';
+import type { ModelDefinePluginContext, ObjxPlugin } from './plugin.js';
 import type {
   DeleteQueryBuilder,
   InsertQueryBuilder,
@@ -177,6 +177,81 @@ export interface ModelDefinitionConfig<
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
+function withColumnDbName<TColumn extends AnyColumnDefinition>(
+  definition: TColumn,
+  dbName: string,
+): TColumn {
+  return deepFreeze({
+    ...definition,
+    config: {
+      ...definition.config,
+      dbName,
+    },
+  }) as TColumn;
+}
+
+function applyModelDefinePlugins(
+  modelName: string,
+  table: string,
+  columns: Record<string, AnyColumnDefinition>,
+  plugins: readonly ObjxPlugin[],
+): Record<string, AnyColumnDefinition> {
+  if (plugins.length === 0) {
+    return columns;
+  }
+
+  const dbNameOverrides = new Map<string, string>();
+  const context: ModelDefinePluginContext = {
+    modelName,
+    table,
+    columnDefinitions: columns,
+    setColumnDbName(columnKey, dbName) {
+      if (!(columnKey in columns)) {
+        throw new Error(
+          `Column "${columnKey}" was not found on model "${modelName}" while applying naming overrides.`,
+        );
+      }
+
+      const normalizedDbName = dbName.trim();
+
+      if (!normalizedDbName) {
+        throw new Error(
+          `Column "${columnKey}" on model "${modelName}" cannot map to an empty database name.`,
+        );
+      }
+
+      dbNameOverrides.set(columnKey, normalizedDbName);
+    },
+    getColumnDbName(columnKey) {
+      const definition = columns[columnKey];
+
+      if (!definition) {
+        return undefined;
+      }
+
+      const configuredDbName = definition.config.dbName;
+      return typeof configuredDbName === 'string' ? configuredDbName : undefined;
+    },
+  };
+
+  for (const plugin of plugins) {
+    plugin.hooks?.onModelDefine?.(context);
+  }
+
+  if (dbNameOverrides.size === 0) {
+    return columns;
+  }
+
+  const nextColumns: Record<string, AnyColumnDefinition> = {};
+
+  for (const [columnKey, definition] of Object.entries(columns)) {
+    const dbName = dbNameOverrides.get(columnKey);
+    nextColumns[columnKey] = dbName ? withColumnDbName(definition, dbName) : definition;
+  }
+
+  return nextColumns;
+}
+
 function createColumnReference<
   TModel extends AnyModelDefinition,
   TKey extends string,
@@ -249,8 +324,14 @@ export function defineModel<
 >(
   config: ModelDefinitionConfig<TColumnsInput, TRelations>,
 ): ModelDefinition<ResolveColumns<TColumnsInput>, TRelations> {
-  const resolvedColumns = Object.fromEntries(
+  const initialColumns = Object.fromEntries(
     Object.entries(config.columns).map(([key, value]) => [key, resolveColumnInput(value)]),
+  ) as ResolveColumns<TColumnsInput>;
+  const resolvedColumns = applyModelDefinePlugins(
+    config.name ?? config.table,
+    config.table,
+    initialColumns as Record<string, AnyColumnDefinition>,
+    config.plugins ?? [],
   ) as ResolveColumns<TColumnsInput>;
 
   const modelShell = {
