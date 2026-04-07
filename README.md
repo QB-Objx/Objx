@@ -432,6 +432,33 @@ const session = createPostgresSession({
 
 You can also pass a `client` instead of a `pool`.
 
+If you rely on PostgreSQL RLS based on `current_setting(...)`, bind execution-context values into
+the transaction automatically:
+
+```ts
+import { createExecutionContextManager } from '@qbobjx/core';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
+
+const executionContextManager = createExecutionContextManager();
+
+const session = createPostgresSession({
+  pool,
+  executionContextManager,
+  executionContextSettings: {
+    bindings: [
+      { setting: 'app.tenant_id', contextKey: 'tenantId', required: true },
+      { setting: 'app.actor_id', contextKey: 'actorId' },
+      { setting: 'request.jwt.claims', value: ({ executionContext }) => ({
+        sub: executionContext.values.get('actorId'),
+      }) },
+    ],
+  },
+});
+```
+
+`executionContextSettings` runs `set_config(...)` inside `session.transaction(...)`, which is the
+safe place to do it with pooled PostgreSQL connections.
+
 ### MySQL
 
 The driver expects something compatible with `mysql2/promise`:
@@ -484,6 +511,40 @@ await executionContextManager.run(
 ```
 
 If you pass `executionContextManager` when creating a session, `session.execute(...)` and `session.transaction(...)` reuse that context automatically.
+
+### Postgres RLS And `set_config(...)`
+
+The tenant scope plugin and PostgreSQL RLS solve different problems:
+
+- `createTenantScopePlugin()` injects tenant predicates into OBJX-generated SQL
+- PostgreSQL RLS with `current_setting(...)` depends on connection-local session state
+
+If your database policies use `current_setting(...)`, keep using transaction/session state in
+Postgres. The recommended OBJX path is:
+
+1. populate request values in `ExecutionContextManager`
+2. configure `createPostgresSession({ executionContextSettings: ... })`
+3. execute the protected work inside `session.transaction(...)`
+
+Example:
+
+```ts
+await executionContextManager.run(
+  {
+    values: {
+      tenantId: 'tenant_a',
+      actorId: 'user_123',
+    },
+  },
+  () =>
+    session.transaction(async (transactionSession) => {
+      await transactionSession.execute(Project.query());
+    }),
+);
+```
+
+This applies the configured `set_config(...)` calls at the start of the transaction before your
+queries run.
 
 ## Running Queries
 

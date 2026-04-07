@@ -1603,6 +1603,7 @@ export interface ObjxSessionOptions<TTransaction = unknown> {
   readonly executionContextManager?: ExecutionContextManager;
   readonly observers?: readonly ObjxSessionObserver[];
   readonly plugins?: readonly ObjxPlugin[];
+  readonly transactionInitializers?: readonly ObjxTransactionInitializer<TTransaction>[];
   readonly resultNormalizer?: SqlResultNormalizer;
   readonly hydrateByDefault?: boolean | HydrationOptions;
 }
@@ -1625,6 +1626,18 @@ export interface ObjxTransactionOptions {
   readonly metadata?: Readonly<Record<string, unknown>>;
   readonly values?: Readonly<Record<string, unknown>>;
 }
+
+export interface ObjxTransactionInitializationContext<TTransaction = unknown> {
+  readonly session: ObjxSession<TTransaction>;
+  readonly executionContext: ExecutionContext;
+  readonly parentExecutionContext: ExecutionContext | undefined;
+  readonly metadata: Readonly<Record<string, unknown>> | undefined;
+  readonly isNested: boolean;
+}
+
+export type ObjxTransactionInitializer<TTransaction = unknown> = (
+  context: ObjxTransactionInitializationContext<TTransaction>,
+) => MaybePromise<void>;
 
 export interface ObjxInsertGraphOptions extends ObjxQueryMaterializationOptions {
   readonly transactional?: boolean;
@@ -1665,6 +1678,7 @@ export class ObjxSession<TTransaction = unknown> {
   readonly #observers: readonly ObjxSessionObserver[];
   readonly #pluginRuntime: ObjxPluginRuntime;
   readonly #modelRegistrations: Map<string, ModelPluginRegistration>;
+  readonly #transactionInitializers: readonly ObjxTransactionInitializer<TTransaction>[];
   readonly #resultNormalizer: SqlResultNormalizer;
   readonly #hydrateByDefault: boolean | HydrationOptions;
   readonly #namingStrategy: ObjxNamingStrategy | undefined;
@@ -1687,6 +1701,7 @@ export class ObjxSession<TTransaction = unknown> {
     this.#hasSessionPlugins =
       options.hasSessionPlugins ?? (options.plugins?.length ?? 0) > 0;
     this.#modelRegistrations = options.modelRegistrations ?? new Map();
+    this.#transactionInitializers = options.transactionInitializers ?? [];
     this.#resultNormalizer = options.resultNormalizer ?? createDefaultSqlResultNormalizer();
     this.#hydrateByDefault = options.hydrateByDefault ?? false;
     this.#boundExecutionContext = options.boundExecutionContext;
@@ -1718,6 +1733,7 @@ export class ObjxSession<TTransaction = unknown> {
       ...(this.#namingStrategy ? { namingStrategy: this.#namingStrategy } : {}),
       executionContextManager: this.#executionContextManager,
       observers: this.#observers,
+      transactionInitializers: this.#transactionInitializers,
       resultNormalizer: this.#resultNormalizer,
       hydrateByDefault: this.#hydrateByDefault,
       boundExecutionContext: executionContext,
@@ -3030,7 +3046,19 @@ export class ObjxSession<TTransaction = unknown> {
 
         return this.#executionContextManager.run(
           executionContext,
-          () => callback(transactionSession),
+          async () => {
+            for (const initializer of this.#transactionInitializers) {
+              await initializer({
+                session: transactionSession,
+                executionContext,
+                parentExecutionContext: parent,
+                metadata: options.metadata,
+                isNested: parentTransaction !== undefined,
+              });
+            }
+
+            return callback(transactionSession);
+          },
         );
       }, parentTransaction || options.metadata
         ? {

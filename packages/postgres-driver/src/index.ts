@@ -3,8 +3,11 @@ import {
   createObjxSqlCompiler,
   createSession,
   type CompiledQuery,
+  joinSql,
   type ObjxSession,
   type ObjxSessionOptions,
+  type ObjxTransactionInitializationContext,
+  type ObjxTransactionInitializer,
   type SqlResultNormalizer,
   type SqlResultNormalizerContext,
   type SqlResultSet,
@@ -12,6 +15,7 @@ import {
   type SqlDriver,
   type SqlTransactionRequest,
   isSqlResultSet,
+  sql,
 } from '@qbobjx/sql-engine';
 
 export type PostgresQueryResultRow = Record<string, unknown>;
@@ -68,6 +72,7 @@ export interface CreatePostgresSessionOptions
     CreatePostgresDriverOptions {
   readonly driver?: ObjxPostgresDriver;
   readonly compiler?: ObjxSessionOptions<ObjxPostgresTransaction>['compiler'];
+  readonly executionContextSettings?: PostgresExecutionContextSettingsOptions;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -177,6 +182,139 @@ export class PostgresResultNormalizer implements SqlResultNormalizer {
 
 export function createPostgresResultNormalizer(): SqlResultNormalizer {
   return new PostgresResultNormalizer();
+}
+
+export interface PostgresExecutionContextSettingsValueContext {
+  readonly executionContext: ObjxTransactionInitializationContext<ObjxPostgresTransaction>['executionContext'];
+  readonly parentExecutionContext: ObjxTransactionInitializationContext<ObjxPostgresTransaction>['parentExecutionContext'];
+  readonly metadata: ObjxTransactionInitializationContext<ObjxPostgresTransaction>['metadata'];
+  readonly isNested: boolean;
+}
+
+export interface PostgresExecutionContextSettingBinding {
+  readonly setting: string;
+  readonly contextKey?: string;
+  readonly value?:
+    | unknown
+    | ((context: PostgresExecutionContextSettingsValueContext) => unknown);
+  readonly required?: boolean;
+  readonly isLocal?: boolean;
+  readonly applyOnNestedTransactions?: boolean;
+  readonly serialize?: (
+    value: unknown,
+    context: PostgresExecutionContextSettingsValueContext,
+  ) => string | undefined;
+}
+
+export interface PostgresExecutionContextSettingsOptions {
+  readonly bindings: readonly PostgresExecutionContextSettingBinding[];
+}
+
+function defaultSerializeExecutionContextSettingValue(value: unknown): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean'
+  ) {
+    return String(value);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  return JSON.stringify(value);
+}
+
+function resolveExecutionContextSettingValue(
+  binding: PostgresExecutionContextSettingBinding,
+  context: PostgresExecutionContextSettingsValueContext,
+): unknown {
+  if (binding.value !== undefined) {
+    return typeof binding.value === 'function'
+      ? binding.value(context)
+      : binding.value;
+  }
+
+  if (!binding.contextKey) {
+    return undefined;
+  }
+
+  return context.executionContext.values.get(binding.contextKey);
+}
+
+export function createPostgresSetConfigTransactionInitializer(
+  options: PostgresExecutionContextSettingsOptions,
+): ObjxTransactionInitializer<ObjxPostgresTransaction> {
+  return async ({
+    session,
+    executionContext,
+    parentExecutionContext,
+    metadata,
+    isNested,
+  }) => {
+    const valueContext: PostgresExecutionContextSettingsValueContext = {
+      executionContext,
+      parentExecutionContext,
+      metadata,
+      isNested,
+    };
+    const setConfigCalls = [];
+
+    for (const binding of options.bindings) {
+      if (isNested && binding.applyOnNestedTransactions === false) {
+        continue;
+      }
+
+      const resolvedValue = resolveExecutionContextSettingValue(binding, valueContext);
+
+      if (resolvedValue === undefined) {
+        if (binding.required) {
+          throw new Error(
+            `Postgres execution context setting "${binding.setting}" requires value "${binding.contextKey ?? binding.setting}".`,
+          );
+        }
+
+        continue;
+      }
+
+      const serializedValue = binding.serialize
+        ? binding.serialize(resolvedValue, valueContext)
+        : defaultSerializeExecutionContextSettingValue(resolvedValue);
+
+      if (serializedValue === undefined) {
+        if (binding.required) {
+          throw new Error(
+            `Postgres execution context setting "${binding.setting}" resolved to an undefined value.`,
+          );
+        }
+
+        continue;
+      }
+
+      setConfigCalls.push(
+        sql`set_config(${binding.setting}, ${serializedValue}, ${binding.isLocal ?? true})`,
+      );
+    }
+
+    if (setConfigCalls.length === 0) {
+      return;
+    }
+
+    await session.execute(sql`select ${joinSql(setConfigCalls, ', ')}`);
+  };
 }
 
 export function createPostgresDriver(
@@ -315,6 +453,12 @@ export function createPostgresSession(
   options: CreatePostgresSessionOptions = {},
 ): ObjxSession<ObjxPostgresTransaction> {
   const driver = options.driver ?? createPostgresDriver(options);
+  const transactionInitializers = [
+    ...(options.transactionInitializers ?? []),
+    ...(options.executionContextSettings
+      ? [createPostgresSetConfigTransactionInitializer(options.executionContextSettings)]
+      : []),
+  ];
   const sessionOptions = {
     driver,
     compiler: options.compiler ?? createObjxSqlCompiler({ dialect: 'postgres' }),
@@ -323,6 +467,9 @@ export function createPostgresSession(
       : {}),
     ...(options.observers ? { observers: options.observers } : {}),
     ...(options.plugins ? { plugins: options.plugins } : {}),
+    ...(transactionInitializers.length > 0
+      ? { transactionInitializers }
+      : {}),
     resultNormalizer: options.resultNormalizer ?? createPostgresResultNormalizer(),
     ...(options.hydrateByDefault !== undefined
       ? { hydrateByDefault: options.hydrateByDefault }

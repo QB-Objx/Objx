@@ -6,10 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>OBJX Docs</title>
+    <title>OBJX | SQL-first ORM for teams that care about runtime</title>
     <meta
       name="description"
-      content="OBJX is a SQL-first ORM for TypeScript with an embedded SQL engine, graph operations, official drivers, plugins, codegen, and NestJS integration."
+      content="OBJX is a SQL-first ORM for TypeScript with an embedded SQL engine, graph runtime, official drivers, NestJS integration, and benchmark-backed performance."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -24,14 +24,16 @@
             <small>SQL-first ORM for TypeScript</small>
           </span>
         </a>
+
         <nav class="site-nav" aria-label="Primary">
+          <a href="#benchmark">Benchmark</a>
           <a href="#install">Install</a>
           <a href="#models">Models</a>
-          <a href="#workflows">Workflows</a>
+          <a href="#postgres-rls">Postgres RLS</a>
           <a href="#nestjs">NestJS</a>
-          <a href="#examples">Examples</a>
-          <a href="#packages">Packages</a>
+          <a href="#workflow">Workflow</a>
         </nav>
+
         <div class="site-links">
           <a class="secondary-link" href="https://github.com/QB-Objx/Objx">GitHub</a>
           <a class="primary-link" href="https://www.npmjs.com/org/qbobjx">npm</a>
@@ -41,87 +43,193 @@
       <main>
         <section class="hero" id="top">
           <div class="hero-copy">
-            <p class="eyebrow">Modern ORM and query builder</p>
-            <h1>OBJX keeps SQL close, types sharp, and runtime power inside the project.</h1>
+            <p class="eyebrow">Modern relational runtime</p>
+            <h1>The ORM that wants the benchmark, not the excuse.</h1>
             <p class="hero-text">
-              Inspired by Objection.js, rebuilt around an embedded SQL engine, typed graph
-              operations, official SQLite/Postgres/MySQL drivers, codegen, plugins, and a
-              production-ready NestJS module.
+              OBJX keeps SQL visible, types tight, graph operations first-class, and runtime
+              overhead under pressure. It ships with an embedded SQL engine, official SQLite,
+              Postgres, and MySQL drivers, real tooling, and an opinionated NestJS module.
             </p>
+
             <div class="hero-actions">
-              <a class="primary-link" href="#install">Start here</a>
-              <a class="secondary-link" href="#workflows">Migrations and seeds</a>
+              <a class="primary-link" href="#benchmark">See the numbers</a>
+              <a class="secondary-link" href="#install">Install OBJX</a>
             </div>
+
             <ul class="hero-pills" aria-label="Highlights">
-              <li>Typed models with <code>defineModel</code></li>
-              <li><code>createSnakeCaseNamingPlugin()</code> for camelCase over snake_case schemas</li>
-              <li><code>createSnakeCaseNamingStrategy()</code> for session-wide physical naming</li>
-              <li>Embedded SQL compiler and runtime</li>
-              <li><code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
-              <li>Plugins for tenant scope, soft delete, audit trail, timestamps</li>
+              <li>Embedded SQL compiler and execution runtime</li>
+              <li>Graph ops: <code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
+              <li>Typed migrations, seeds, introspection, and starter templates</li>
+              <li>Official NestJS package with request context and validation filter</li>
             </ul>
           </div>
 
-          <aside class="hero-panel" aria-label="Project overview">
-            <div class="panel-card">
-              <p class="panel-label">Published packages</p>
-              <p class="panel-value">9</p>
-              <p class="panel-text">Core, engine, drivers, plugins, validation, codegen, NestJS.</p>
+          <aside class="hero-panel" aria-label="Benchmark summary">
+            <div class="hero-score">
+              <p class="panel-label">Current repo benchmark</p>
+              <h2>OBJX wins <span data-hero-win-count>4/6</span> Postgres scenarios.</h2>
+              <p class="panel-text">
+                The site uses the checked-in benchmark snapshot from this repository, not a mocked
+                marketing table.
+              </p>
             </div>
-            <div class="panel-card panel-card-accent">
-              <p class="panel-label">Official drivers</p>
-              <p class="panel-value">SQLite, Postgres, MySQL</p>
-              <p class="panel-text">One API across sessions, transactions, graphs, and tooling.</p>
-            </div>
-            <div class="stack-card">
-              <p class="panel-label">Architecture</p>
-              <ul class="stack-list">
-                <li><strong>@qbobjx/core</strong><span>models, columns, relations, query builder</span></li>
-                <li><strong>@qbobjx/sql-engine</strong><span>compiler, runtime, raw SQL helpers</span></li>
-                <li><strong>@qbobjx/*-driver</strong><span>SQLite, Postgres, MySQL sessions</span></li>
-                <li><strong>@qbobjx/plugins</strong><span>soft delete, tenant, timestamps, audit</span></li>
-                <li><strong>@qbobjx/codegen</strong><span>introspection, migrations, seeds</span></li>
-                <li><strong>@qbobjx/nestjs</strong><span>ready-made Nest module and request context</span></li>
-              </ul>
+
+            <div class="hero-metrics" data-hero-metrics></div>
+
+            <div class="hero-mini-chart">
+              <div class="mini-chart-header">
+                <span>Postgres throughput preview</span>
+                <small data-benchmark-stamp></small>
+              </div>
+              <div class="mini-chart-body" data-hero-chart></div>
             </div>
           </aside>
         </section>
 
-        <section class="feature-strip" aria-label="Capabilities">
-          <article class="feature-card">
-            <h2>Control</h2>
-            <p>Raw SQL stays first-class. You can drop to <code>sql</code>, <code>ref</code>, and compiled queries without fighting the ORM.</p>
-          </article>
-          <article class="feature-card">
-            <h2>Graph runtime</h2>
-            <p>Use eager loading, <code>insertGraph</code>, <code>upsertGraph</code>, <code>relate</code>, and <code>unrelate</code> with the same session model.</p>
-          </article>
-          <article class="feature-card">
-            <h2>Ambient context</h2>
-            <p><code>ExecutionContextManager</code> carries transaction scope, tenant ids, actor ids, request metadata, and plugin state.</p>
-          </article>
-          <article class="feature-card">
-            <h2>Operational tooling</h2>
-            <p>Real migrations, seeds, code generation, starter templates, validation adapters, and framework integration already ship as packages.</p>
-          </article>
+        <section class="section benchmark-section" id="benchmark">
+          <div class="section-heading">
+            <p class="eyebrow">Benchmark</p>
+            <h2>Performance is part of the product, not an afterthought.</h2>
+            <p>
+              These charts come from the benchmark suite in the repo. The official run path is the
+              Docker profile, so other teams can reproduce the same workload instead of trusting a
+              screenshot.
+            </p>
+          </div>
+
+          <div class="benchmark-summary-grid" data-benchmark-summary></div>
+
+          <div class="benchmark-shell">
+            <div class="benchmark-toolbar" role="tablist" aria-label="Benchmark views">
+              <button
+                type="button"
+                class="benchmark-tab is-active"
+                data-benchmark-view="throughput"
+                role="tab"
+                aria-selected="true"
+              >
+                Postgres field test
+              </button>
+              <button
+                type="button"
+                class="benchmark-tab"
+                data-benchmark-view="transactions"
+                role="tab"
+                aria-selected="false"
+              >
+                Transaction overhead
+              </button>
+              <button
+                type="button"
+                class="benchmark-tab"
+                data-benchmark-view="compiler"
+                role="tab"
+                aria-selected="false"
+              >
+                Compiler cost profile
+              </button>
+            </div>
+
+            <div class="benchmark-panel">
+              <div class="benchmark-panel-header">
+                <div>
+                  <p class="panel-label" data-benchmark-kicker></p>
+                  <h3 data-benchmark-title></h3>
+                </div>
+                <p class="benchmark-panel-note" data-benchmark-note></p>
+              </div>
+
+              <div class="benchmark-chart" data-benchmark-chart></div>
+            </div>
+          </div>
+
+          <div class="benchmark-footer">
+            <div class="benchmark-repro">
+              <h3>Reproduce it</h3>
+              <p>
+                The official benchmark path is Dockerized and versioned in the repo. Run the same
+                suite instead of eyeballing claims.
+              </p>
+              <pre><code id="benchmark-command">npm run benchmark:db:up
+npm run benchmark:setup
+npm run benchmark</code></pre>
+            </div>
+
+            <div class="benchmark-footnotes">
+              <article class="benchmark-footnote">
+                <h3>Benchmark posture</h3>
+                <p>
+                  OBJX is already ahead in several hot paths, and the benchmark is kept in-repo so
+                  regressions stay visible.
+                </p>
+              </article>
+              <article class="benchmark-footnote">
+                <h3>What the chart means</h3>
+                <p>
+                  Higher ops/s is better. The bar leader for each scenario is highlighted. Raw
+                  reports live under <code>benchmarks/reports/</code> in the repository.
+                </p>
+              </article>
+            </div>
+          </div>
         </section>
 
         <section class="section" id="install">
           <div class="section-heading">
             <p class="eyebrow">Install</p>
-            <h2>Choose the happy path you want to ship.</h2>
+            <h2>Pick the stack you actually need.</h2>
             <p>
-              Switch between the main installation presets. The rest of the API stays the same.
+              OBJX is split by responsibility. Keep the runtime lean or compose the whole platform.
             </p>
           </div>
 
           <div class="install-shell">
             <div class="install-tabs" role="tablist" aria-label="Installation presets">
-              <button type="button" class="install-tab is-active" data-install-target="sqlite" role="tab" aria-selected="true">SQLite</button>
-              <button type="button" class="install-tab" data-install-target="postgres" role="tab" aria-selected="false">Postgres</button>
-              <button type="button" class="install-tab" data-install-target="mysql" role="tab" aria-selected="false">MySQL</button>
-              <button type="button" class="install-tab" data-install-target="nestjs" role="tab" aria-selected="false">NestJS</button>
-              <button type="button" class="install-tab" data-install-target="tooling" role="tab" aria-selected="false">Tooling</button>
+              <button
+                type="button"
+                class="install-tab is-active"
+                data-install-target="sqlite"
+                role="tab"
+                aria-selected="true"
+              >
+                SQLite
+              </button>
+              <button
+                type="button"
+                class="install-tab"
+                data-install-target="postgres"
+                role="tab"
+                aria-selected="false"
+              >
+                Postgres
+              </button>
+              <button
+                type="button"
+                class="install-tab"
+                data-install-target="mysql"
+                role="tab"
+                aria-selected="false"
+              >
+                MySQL
+              </button>
+              <button
+                type="button"
+                class="install-tab"
+                data-install-target="nestjs"
+                role="tab"
+                aria-selected="false"
+              >
+                NestJS
+              </button>
+              <button
+                type="button"
+                class="install-tab"
+                data-install-target="tooling"
+                role="tab"
+                aria-selected="false"
+              >
+                Tooling
+              </button>
             </div>
 
             <div class="code-card">
@@ -137,45 +245,42 @@
           </div>
         </section>
 
-        <section class="section two-column" id="models">
-          <div>
-            <p class="eyebrow">Typed models</p>
-            <h2>Define models with defaults, generated columns, and relation metadata.</h2>
+        <section class="section feature-grid-section" id="models">
+          <div class="section-heading">
+            <p class="eyebrow">Modeling</p>
+            <h2>Use one model shape across type inference, hydration, and graph runtime.</h2>
             <p>
-              OBJX treats schema metadata as runtime truth and type signal at the same time.
-              Defaults can be static or factory-based, generated fields stay out of required insert
-              payloads, relation columns stay explicit, and naming plugins can keep models in
-              camelCase even when the database stays in snake_case.
+              Advanced column builders, default factories, codecs, naming strategy, and relation
+              metadata are all part of the same core model API.
             </p>
-            <ul class="detail-list">
-              <li><code>col.bigint()</code> and <code>col.bigInt()</code> for bigint columns</li>
-              <li><code>.default(value)</code> and <code>.default(() =&gt; value)</code></li>
-              <li><code>.generated()</code> for runtime-populated fields like tenant ids and graph-owned foreign keys</li>
-              <li><code>createSnakeCaseNamingPlugin()</code> remaps physical columns during model definition</li>
-              <li><code>createSnakeCaseNamingStrategy()</code> keeps physical naming configurable per session</li>
-              <li><code>belongsToOne</code>, <code>hasOne</code>, <code>hasMany</code>, <code>manyToMany</code></li>
-            </ul>
           </div>
 
-          <div class="code-card">
-            <div class="code-card-header">
-              <span>Model definition</span>
-              <button type="button" class="copy-button" data-copy-target="model-snippet">Copy</button>
-            </div>
-            <pre><code id="model-snippet">import { col, defineModel, hasMany } from '@qbobjx/core';
+          <div class="feature-grid">
+            <article class="feature-card feature-card-large">
+              <h3>Model definition</h3>
+              <p>
+                Keep logical camelCase keys while mapping to physical database names, and still get
+                runtime defaults, typed inserts, and graph-aware relations.
+              </p>
+              <div class="code-card compact-card">
+                <div class="code-card-header">
+                  <span>Typed model</span>
+                  <button type="button" class="copy-button" data-copy-target="model-snippet">
+                    Copy
+                  </button>
+                </div>
+                <pre><code id="model-snippet">import { col, defineModel, hasMany } from '@qbobjx/core';
 import { createSnakeCaseNamingPlugin } from '@qbobjx/plugins';
 
-const generateSnowflakeId = () =&gt; BigInt(Date.now());
-
 export const Project = defineModel({
-  name: 'Project',
   table: 'projects',
   columns: {
     id: col.bigInt().primary().default(() =&gt; generateSnowflakeId()),
     tenantId: col.text().generated(),
-    name: col.text(),
-    status: col.text().default('planned'),
-    deletedAt: col.timestamp().nullable(),
+    budget: col.numeric(),
+    profile: col.jsonb().nullable(),
+    status: col.enum(['draft', 'active', 'done']).default('draft'),
+    createdAt: col.timestamp(),
   },
   relations: (project) =&gt; ({
     tasks: hasMany(() =&gt; Task, {
@@ -185,180 +290,142 @@ export const Project = defineModel({
   }),
   plugins: [createSnakeCaseNamingPlugin()],
 });</code></pre>
+              </div>
+            </article>
+
+            <article class="feature-card">
+              <h3>Advanced column surface</h3>
+              <ul class="detail-list">
+                <li><code>bigint</code>, <code>numeric</code>, <code>float</code>, <code>double</code></li>
+                <li><code>date</code>, <code>time</code>, <code>timestamp</code>, <code>jsonb</code></li>
+                <li><code>enum([...])</code> and Postgres arrays</li>
+                <li>custom column codecs for write serialization and hydration</li>
+              </ul>
+            </article>
+
+            <article class="feature-card">
+              <h3>SQL expressiveness</h3>
+              <ul class="detail-list">
+                <li><code>distinct</code>, <code>groupBy</code>, <code>having</code></li>
+                <li>typed aggregates and scalar subqueries</li>
+                <li><code>withCte(...)</code> for common table expressions</li>
+                <li>raw SQL escape hatch with <code>sql</code>, <code>ref</code>, <code>identifier</code></li>
+              </ul>
+            </article>
+
+            <article class="feature-card">
+              <h3>Runtime power</h3>
+              <ul class="detail-list">
+                <li><code>insertGraph</code>, <code>upsertGraph</code>, <code>relate</code>, <code>unrelate</code></li>
+                <li>nested eager loading and relation expressions</li>
+                <li>ambient execution context and nested transactions</li>
+                <li>official drivers for SQLite, Postgres, and MySQL</li>
+              </ul>
+            </article>
           </div>
         </section>
 
-        <section class="section two-column" id="runtime">
+        <section class="section two-column" id="postgres-rls">
+          <div>
+            <p class="eyebrow">Postgres RLS</p>
+            <h2>Tenant predicates are not the same thing as database-enforced RLS.</h2>
+            <p>
+              OBJX now supports a first-class bridge from request context into
+              <code>set_config(...)</code> at transaction start. That means you can keep using
+              PostgreSQL policies based on <code>current_setting(...)</code> without hand-wiring the
+              same ceremony around every use case.
+            </p>
+            <ul class="detail-list">
+              <li><code>createTenantScopePlugin()</code> handles SQL-level filtering in the ORM</li>
+              <li><code>executionContextSettings</code> handles PostgreSQL session state for RLS</li>
+              <li>both can run together when you want app-level and DB-level enforcement</li>
+            </ul>
+          </div>
+
           <div class="code-card">
             <div class="code-card-header">
-              <span>Runtime and transactions</span>
-              <button type="button" class="copy-button" data-copy-target="runtime-snippet">Copy</button>
+              <span>RLS transaction setup</span>
+              <button type="button" class="copy-button" data-copy-target="rls-snippet">Copy</button>
             </div>
-            <pre><code id="runtime-snippet">const rows = await executionContextManager.run(
+            <pre><code id="rls-snippet">const executionContextManager = createExecutionContextManager();
+
+const session = createPostgresSession({
+  pool,
+  executionContextManager,
+  executionContextSettings: {
+    bindings: [
+      { setting: 'app.tenant_id', contextKey: 'tenantId', required: true },
+      { setting: 'app.actor_id', contextKey: 'actorId' },
+      {
+        setting: 'request.jwt.claims',
+        value: ({ executionContext }) =&gt; ({
+          sub: executionContext.values.get('actorId'),
+        }),
+      },
+    ],
+  },
+});
+
+await executionContextManager.run(
   {
     values: {
-      tenantId: 'demo',
-      actorId: 'user_admin',
+      tenantId: 'tenant_a',
+      actorId: 'user_123',
     },
   },
   () =&gt;
     session.transaction(async (trx) =&gt; {
-      await trx.execute(
-        Project.insert({
-          name: 'Ship docs',
-          status: 'planned',
-        }),
-      );
-
-      return trx.execute(
-        Project.query()
-          .where(({ status }, op) =&gt; op.eq(status, 'planned'))
-          .withRelated({
-            tasks: true,
-          }),
-        { hydrate: true },
-      );
+      return trx.execute(Project.query(), { hydrate: true });
     }),
 );</code></pre>
-          </div>
-
-          <div class="runtime-grid">
-            <article class="runtime-card">
-              <h2>Sessions</h2>
-              <p>
-                <code>createSqliteSession</code>, <code>createPostgresSession</code>, and
-                <code>createMySqlSession</code> expose the same execution model.
-              </p>
-            </article>
-            <article class="runtime-card">
-              <h2>Transactions</h2>
-              <p>
-                Every official driver supports <code>session.transaction(...)</code> and nested
-                transactions where savepoints are available.
-              </p>
-            </article>
-            <article class="runtime-card">
-              <h2>Hydration</h2>
-              <p>
-                Dates, booleans, json payloads, and bigint values can be hydrated automatically from
-                query results.
-              </p>
-            </article>
-            <article class="runtime-card">
-              <h2>Plugins</h2>
-              <p>
-                Register plugins globally in the session or per model to compose tenant scope, audit,
-                validation, timestamps, and soft delete behavior.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section" id="workflows">
-          <div class="section-heading">
-            <p class="eyebrow">Operational workflow</p>
-            <h2>Migrations, seeds, and codegen are part of the stack.</h2>
-            <p>
-              The recommended path is explicit migrations and seeds. Use templates to scaffold the
-              folders, then run the same commands across SQLite, Postgres, or MySQL.
-            </p>
-          </div>
-
-          <div class="workflow-grid">
-            <article class="workflow-card">
-              <h3>1. Scaffold</h3>
-              <p>Generate starter migration and seed schemas.</p>
-            </article>
-            <article class="workflow-card">
-              <h3>2. Migrate</h3>
-              <p>Run <code>up</code> and <code>down</code> versions explicitly per dialect.</p>
-            </article>
-            <article class="workflow-card">
-              <h3>3. Seed</h3>
-              <p>Load initial data and revert it with tracked seed history.</p>
-            </article>
-            <article class="workflow-card">
-              <h3>4. Generate</h3>
-              <p>Introspect and generate model output when you need schema-driven bootstrapping.</p>
-            </article>
-          </div>
-
-          <div class="code-split">
-            <div class="code-card">
-              <div class="code-card-header">
-                <span>Typed migrations and seeds</span>
-                <button type="button" class="copy-button" data-copy-target="migration-snippet">
-                  Copy
-                </button>
-              </div>
-              <pre><code id="migration-snippet">npm run codegen -- template --template migration-seed-schemas --out ./db
-
-npm run codegen -- migrate --dialect postgres --database "$DATABASE_URL" --dir ./db/migrations --direction up
-
-npm run codegen -- seed --dialect postgres --database "$DATABASE_URL" --dir ./db/seeds --direction run</code></pre>
-            </div>
-
-            <div class="callout-card">
-              <h3>The recommended app shape</h3>
-              <ul class="detail-list">
-                <li><code>db/migrations/*.migration.mjs</code></li>
-                <li><code>db/seeds/*.seed.mjs</code></li>
-              <li><code>npm run db:migrate</code> before app start</li>
-              <li><code>npm run db:seed</code> for dev and demo data</li>
-              <li>API examples keep camelCase models while migrations define snake_case columns</li>
-              <li>NestJS example already follows this flow end to end</li>
-            </ul>
-          </div>
           </div>
         </section>
 
         <section class="section two-column" id="nestjs">
           <div>
-            <p class="eyebrow">Framework integration</p>
-            <h2>Use the official NestJS module instead of hand-wiring providers.</h2>
+            <p class="eyebrow">NestJS</p>
+            <h2>Use the official module, not a pile of custom providers.</h2>
             <p>
-              <code>@qbobjx/nestjs</code> ships a dynamic module, session injection helpers,
-              request-context interception, validation mapping, and shutdown hooks for drivers that
-              need cleanup.
+              <code>@qbobjx/nestjs</code> ships a dynamic module, typed session host, request
+              context, and validation mapping so the database layer feels like part of the app, not
+              an integration tax.
             </p>
             <ul class="detail-list">
-              <li><code>ObjxModule.forRoot(...)</code> and <code>ObjxModule.forRootAsync(...)</code></li>
-              <li><code>@InjectObjxSession()</code> for clean session injection</li>
-              <li>automatic request context from headers like <code>x-tenant-id</code></li>
-              <li>global filter for <code>ObjxValidationError</code></li>
+              <li><code>ObjxModule.forRoot(...)</code> and <code>forRootAsync(...)</code></li>
+              <li><code>ObjxSessionHost&lt;TSession&gt;</code> for typed access without decorator noise</li>
+              <li>request values from headers already flow into the execution context</li>
+              <li>Postgres RLS can piggyback on the same request context through <code>executionContextSettings</code></li>
             </ul>
           </div>
 
           <div class="code-card">
             <div class="code-card-header">
               <span>NestJS module setup</span>
-              <button type="button" class="copy-button" data-copy-target="nestjs-snippet">Copy</button>
+              <button type="button" class="copy-button" data-copy-target="nestjs-snippet">
+                Copy
+              </button>
             </div>
             <pre><code id="nestjs-snippet">@Module({
   imports: [
     ObjxModule.forRootAsync({
       global: true,
-      inject: [AuditTrailStore],
-      useFactory: (auditTrailStore) =&gt; ({
-        session: createSqliteSession({
-          driver: createSqliteDriver({
-            databasePath: './data/app.sqlite',
-            pragmas: ['foreign_keys = on'],
-          }),
+      useFactory: async () =&gt; ({
+        session: createPostgresSession({
+          pool,
           executionContextManager: createExecutionContextManager(),
           hydrateByDefault: true,
+          executionContextSettings: {
+            bindings: [
+              { setting: 'app.tenant_id', contextKey: 'tenantId', required: true },
+              { setting: 'app.actor_id', contextKey: 'actorId' },
+            ],
+          },
           plugins: [
             createTenantScopePlugin(),
             createSoftDeletePlugin(),
-            createAuditTrailPlugin({
-              actorKey: 'actorId',
-              emit: (entry) =&gt; auditTrailStore.append(entry),
-            }),
           ],
         }),
-        requestContext: {
-          enabled: true,
-        },
+        requestContext: { enabled: true },
       }),
     }),
   ],
@@ -367,75 +434,63 @@ export class AppModule {}</code></pre>
           </div>
         </section>
 
-        <section class="section" id="examples">
+        <section class="section" id="workflow">
           <div class="section-heading">
-            <p class="eyebrow">Repository examples</p>
-            <h2>Use working apps instead of theory.</h2>
+            <p class="eyebrow">Operational workflow</p>
+            <h2>The runtime ships with the ops story, not just the query API.</h2>
             <p>
-              The repository already includes end-to-end examples for runtime behavior, APIs, and
-              tooling.
+              The repo already carries the serious pieces: codegen, migrations, seeds, examples,
+              Pages docs, and benchmark suites that can be rerun instead of reimagined.
             </p>
           </div>
 
-          <div class="example-grid">
-            <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/complex-runtime">
-              <strong>complex-runtime</strong>
-              <span>Graph ops, relation expressions, nested transactions, raw SQL, and snake_case schemas.</span>
-            </a>
-            <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/express-api">
-              <strong>express-api</strong>
-              <span>Express API with snake_case physical columns, validation, CRUD, and audit trail.</span>
-            </a>
-            <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/nestjs-api">
-              <strong>nestjs-api</strong>
-              <span>NestJS API using the official module, typed migrations, typed seeds, and snake_case columns.</span>
-            </a>
-            <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/sqlite-introspection">
-              <strong>sqlite-introspection</strong>
-              <span>Schema introspection and generated model output.</span>
-            </a>
-            <a class="example-card" href="https://github.com/QB-Objx/Objx/tree/main/examples/benchmarks">
-              <strong>benchmarks</strong>
-              <span>Compiler and runtime benchmark suite.</span>
-            </a>
-          </div>
-        </section>
-
-        <section class="section" id="packages">
-          <div class="section-heading">
-            <p class="eyebrow">Packages</p>
-            <h2>Published modules by responsibility.</h2>
-            <p>Install only what you need or compose the whole stack.</p>
+          <div class="workflow-grid">
+            <article class="workflow-card">
+              <h3>Codegen</h3>
+              <p>Introspect SQLite, Postgres, or MySQL and bootstrap models or starter templates.</p>
+            </article>
+            <article class="workflow-card">
+              <h3>Migrations</h3>
+              <p>Run typed migration schemas with explicit up/down direction and tracked history.</p>
+            </article>
+            <article class="workflow-card">
+              <h3>Seeds</h3>
+              <p>Seed and revert data with versioned seed history per dialect.</p>
+            </article>
+            <article class="workflow-card">
+              <h3>Benchmarks</h3>
+              <p>Keep performance visible with reproducible Docker-backed comparisons inside the repo.</p>
+            </article>
           </div>
 
           <div class="package-grid">
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/core">
               <strong>@qbobjx/core</strong>
-              <span>Models, columns, relations, execution context, query builder.</span>
+              <span>Models, columns, relations, execution context, type surface.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/sql-engine">
               <strong>@qbobjx/sql-engine</strong>
-              <span>Compiler, runtime, raw SQL helpers, compiled query execution.</span>
-            </a>
-            <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/sqlite-driver">
-              <strong>@qbobjx/sqlite-driver</strong>
-              <span>SQLite driver and session built on top of the core runtime.</span>
+              <span>Compiler, runtime, raw SQL helpers, transactions, hydration.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/postgres-driver">
               <strong>@qbobjx/postgres-driver</strong>
-              <span>Postgres driver compatible with <code>pg</code> pools and clients.</span>
+              <span>Official Postgres driver plus execution-context bindings for RLS state.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/mysql-driver">
               <strong>@qbobjx/mysql-driver</strong>
               <span>MySQL driver compatible with <code>mysql2/promise</code>.</span>
             </a>
+            <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/sqlite-driver">
+              <strong>@qbobjx/sqlite-driver</strong>
+              <span>SQLite runtime for local apps, demos, and embedded deployments.</span>
+            </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/plugins">
               <strong>@qbobjx/plugins</strong>
-              <span>Snake case naming, tenant scope, timestamps, soft delete, and audit trail.</span>
+              <span>Tenant scope, soft delete, audit trail, snake_case naming, timestamps.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/validation">
               <strong>@qbobjx/validation</strong>
-              <span>Validation adapters and runtime contracts for inserts, updates, and graphs.</span>
+              <span>Validation adapters for inserts, updates, graphs, and runtime errors.</span>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/codegen">
               <strong>@qbobjx/codegen</strong>
@@ -443,36 +498,17 @@ export class AppModule {}</code></pre>
             </a>
             <a class="package-card" href="https://www.npmjs.com/package/@qbobjx/nestjs">
               <strong>@qbobjx/nestjs</strong>
-              <span>Dynamic module, request context, validation filter, and DI helpers.</span>
+              <span>Dynamic module, request context, validation filter, and typed session host.</span>
             </a>
-          </div>
-        </section>
-
-        <section class="section" id="deploy">
-          <div class="section-heading">
-            <p class="eyebrow">GitHub Pages</p>
-            <h2>Static docs site with no build step.</h2>
-            <p>
-              This documentation lives directly in the <code>pages/</code> folder and is deployed by
-              a dedicated GitHub Actions workflow.
-            </p>
-          </div>
-          <div class="deploy-card">
-            <ol class="deploy-list">
-              <li>Enable GitHub Pages in the repository and choose <strong>GitHub Actions</strong> as the source.</li>
-              <li>Edit files inside <code>pages/</code>.</li>
-              <li>Push to <code>main</code> or <code>master</code>.</li>
-              <li>The workflow uploads <code>pages/</code> and deploys it as the site artifact.</li>
-            </ol>
           </div>
         </section>
       </main>
 
       <footer class="site-footer">
-        <p>OBJX documentation site for GitHub Pages.</p>
+        <p>OBJX docs and benchmark story for GitHub Pages.</p>
         <div class="footer-links">
-          <a href="https://github.com/QB-Objx/Objx/blob/main/README.md">Repository README</a>
-          <a href="https://github.com/QB-Objx/Objx/blob/main/docs/getting-started.md">Getting started</a>
+          <a href="https://github.com/QB-Objx/Objx/blob/main/README.md">README</a>
+          <a href="https://github.com/QB-Objx/Objx/tree/main/benchmarks">Benchmarks</a>
           <a href="https://github.com/QB-Objx/Objx/tree/main/examples/nestjs-api">NestJS example</a>
         </div>
       </footer>

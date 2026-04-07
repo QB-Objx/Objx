@@ -5,8 +5,9 @@ import path from 'node:path';
 import pg from 'pg';
 import mysql from 'mysql2/promise';
 
-import { col, defineModel } from '@qbobjx/core';
+import { col, createExecutionContextManager, defineModel } from '@qbobjx/core';
 import { runCodegenCli } from '@qbobjx/codegen';
+import { sql } from '@qbobjx/sql-engine';
 import {
   cleanupCodegenTables,
   createCodegenSchemaDirectory,
@@ -124,6 +125,57 @@ const tests = [
         );
         assert.equal(rows[0].done, false);
         assert.equal(rows[1].done, true);
+      } finally {
+        await pool.end();
+      }
+    },
+  ],
+  [
+    'postgres session executionContextSettings applies current_setting values inside transactions',
+    async () => {
+      const pool = new Pool({
+        connectionString: postgresConnectionString,
+      });
+      const executionContextManager = createExecutionContextManager();
+
+      try {
+        const session = createPostgresSession({
+          pool,
+          executionContextManager,
+          executionContextSettings: {
+            bindings: [
+              {
+                setting: 'app.tenant_id',
+                contextKey: 'tenantId',
+                required: true,
+              },
+              {
+                setting: 'app.actor_id',
+                contextKey: 'actorId',
+              },
+            ],
+          },
+        });
+
+        await executionContextManager.run(
+          {
+            values: {
+              tenantId: 'tenant_a',
+              actorId: 'user_123',
+            },
+          },
+          async () => {
+            const result = await session.transaction(async (transactionSession) =>
+              transactionSession.execute(
+                sql`select current_setting(${'app.tenant_id'}, true) as tenant_id,
+                           current_setting(${'app.actor_id'}, true) as actor_id`,
+              ),
+            );
+
+            assert.equal(result.rows[0].tenant_id, 'tenant_a');
+            assert.equal(result.rows[0].actor_id, 'user_123');
+          },
+        );
       } finally {
         await pool.end();
       }

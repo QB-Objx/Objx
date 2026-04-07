@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   belongsToOne,
   col,
+  createExecutionContextManager,
   defineModel,
   expr,
   hasMany,
@@ -540,6 +541,7 @@ class FakePostgresPool {
   constructor() {
     this.rows = [];
     this.nextId = 0;
+    this.queries = [];
     this.transactionScopes = [];
     this.connectCount = 0;
     this.releaseCount = 0;
@@ -587,6 +589,10 @@ class FakePostgresPool {
   async #execute(sqlText, parameters) {
     const compactSql = sqlText.trim().replace(/\s+/g, ' ');
     const normalizedSql = compactSql.toLowerCase();
+    this.queries.push({
+      sql: compactSql,
+      parameters: [...parameters],
+    });
 
     if (normalizedSql === 'begin') {
       this.transactionScopes.push({
@@ -734,6 +740,14 @@ class FakePostgresPool {
       return {
         rows,
         rowCount: rows.length,
+        command: 'SELECT',
+      };
+    }
+
+    if (/^select set_config\(/i.test(compactSql)) {
+      return {
+        rows: [{}],
+        rowCount: 1,
         command: 'SELECT',
       };
     }
@@ -2531,6 +2545,75 @@ export default defineSeed({
       }
 
       assert.equal(pool.ended, true);
+    },
+  ],
+  [
+    'postgres session applies execution context settings via set_config inside transactions',
+    async () => {
+      const executionContextManager = createExecutionContextManager();
+      const pool = new FakePostgresPool();
+      const session = createPostgresSession({
+        pool,
+        executionContextManager,
+        executionContextSettings: {
+          bindings: [
+            {
+              setting: 'app.tenant_id',
+              contextKey: 'tenantId',
+              required: true,
+            },
+            {
+              setting: 'app.actor_id',
+              contextKey: 'actorId',
+            },
+            {
+              setting: 'request.jwt.claims',
+              value: ({ executionContext }) => ({
+                sub: executionContext.values.get('actorId'),
+              }),
+            },
+          ],
+        },
+      });
+
+      await executionContextManager.run(
+        {
+          values: {
+            tenantId: 'tenant_a',
+            actorId: 'user_123',
+          },
+        },
+        () =>
+          session.transaction(async (transactionSession) => {
+            await transactionSession.execute(
+              SqliteTask.insert({
+                title: 'RLS protected',
+                done: false,
+              }),
+            );
+          }),
+      );
+
+      assert.deepEqual(
+        pool.queries.slice(0, 4).map((entry) => entry.sql),
+        [
+          'begin',
+          'select set_config($1, $2, $3), set_config($4, $5, $6), set_config($7, $8, $9)',
+          'insert into "task_items" ("title", "done") values ($1, $2)',
+          'commit',
+        ],
+      );
+      assert.deepEqual(pool.queries[1].parameters, [
+        'app.tenant_id',
+        'tenant_a',
+        true,
+        'app.actor_id',
+        'user_123',
+        true,
+        'request.jwt.claims',
+        '{"sub":"user_123"}',
+        true,
+      ]);
     },
   ],
   [

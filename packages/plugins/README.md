@@ -77,3 +77,12 @@ Repository examples using this pattern:
 - `examples/complex-runtime`
 - `examples/express-api`
 - `examples/nestjs-api`
+
+## Tenant Scope Vs PostgreSQL RLS
+
+`createTenantScopePlugin()` injects tenant predicates into OBJX-generated SQL. It does not replace
+PostgreSQL RLS policies that depend on `set_config(...)` / `current_setting(...)`.
+
+If your database enforces tenant isolation through PostgreSQL RLS, configure
+`createPostgresSession({ executionContextSettings: ... })` in `@qbobjx/postgres-driver` and execute
+protected work inside `session.transaction(...)`.

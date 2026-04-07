@@ -72,3 +72,30 @@ export class ProjectsService {
 
 Use `@InjectObjxSession()` when you only want the bare session. Use `ObjxSessionHost<TSession>` when
 you want the typed session plus helper access to the current execution context.
+
+## Postgres RLS With Request Context
+
+If your NestJS app uses PostgreSQL RLS with `current_setting(...)`, configure the Postgres session
+to project request-context values into `set_config(...)` at transaction start:
+
+```ts
+import { createExecutionContextManager } from '@qbobjx/core';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
+
+const executionContextManager = createExecutionContextManager();
+
+const session = createPostgresSession({
+  pool,
+  executionContextManager,
+  executionContextSettings: {
+    bindings: [
+      { setting: 'app.tenant_id', contextKey: 'tenantId', required: true },
+      { setting: 'app.actor_id', contextKey: 'actorId' },
+    ],
+  },
+});
+```
+
+With `ObjxModule` request context enabled, headers like `x-tenant-id` and `x-actor-id` already flow
+into the execution context. To make PostgreSQL RLS see them, run the protected work inside
+`session.transaction(...)` so OBJX can apply the `set_config(...)` bindings on the same connection.
