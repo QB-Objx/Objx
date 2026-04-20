@@ -27,6 +27,9 @@
     },
     {
       "path": "./packages/nestjs"
+    },
+    {
+      "path": "./packages/fullstack"
     }
   ]
 }

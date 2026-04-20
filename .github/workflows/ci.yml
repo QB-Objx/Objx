@@ -47,6 +47,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Run fullstack package tests
+        run: npm run test:fullstack
+
       - name: Smoke test published package installs
         run: npm run smoke:packages
 

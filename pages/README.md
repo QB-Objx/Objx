@@ -2,6 +2,9 @@
 
 Static documentation site for OBJX.
 
+When core package offerings change (for example, new official integrations like `@qbobjx/fullstack`),
+update the installation presets and landing copy here as part of the same change.
+
 ## Files
 
 - `index.html`: landing page and documentation content

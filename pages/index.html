@@ -9,7 +9,7 @@
     <title>OBJX | SQL-first ORM for teams that care about runtime</title>
     <meta
       name="description"
-      content="OBJX is a SQL-first ORM for TypeScript with an embedded SQL engine, graph runtime, official drivers, NestJS integration, and benchmark-backed performance."
+      content="OBJX is a SQL-first ORM for TypeScript with an embedded SQL engine, graph runtime, official drivers, fullstack Fetch integration, and benchmark-backed performance."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -60,7 +60,8 @@
               <li>Embedded SQL compiler and execution runtime</li>
               <li>Graph ops: <code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
               <li>Typed migrations, seeds, introspection, and starter templates</li>
-              <li>Official NestJS package with request context and validation filter</li>
+              <li>Official NestJS and fullstack Fetch packages with request-context helpers</li>
+              <li>Repository examples for Express, NestJS, and React Router CRUD</li>
             </ul>
           </div>
 
@@ -220,6 +221,15 @@ npm run benchmark</code></pre>
                 aria-selected="false"
               >
                 NestJS
+              </button>
+              <button
+                type="button"
+                class="install-tab"
+                data-install-target="fullstack"
+                role="tab"
+                aria-selected="false"
+              >
+                Fullstack Fetch
               </button>
               <button
                 type="button"

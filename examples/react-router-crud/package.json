@@ -1,0 +1,22 @@
+{
+  "name": "objx-react-router-crud-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "start": "react-router-serve ./build/server/index.js"
+  },
+  "dependencies": {
+    "@qbobjx/core": "file:../../packages/core",
+    "@qbobjx/fullstack": "file:../../packages/fullstack",
+    "@qbobjx/sqlite-driver": "file:../../packages/sqlite-driver",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router": "^7.9.2"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.9.2",
+    "typescript": "^5.8.3"
+  }
+}

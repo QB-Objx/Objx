@@ -1,0 +1,33 @@
+{
+  "name": "@qbobjx/fullstack",
+  "version": "0.3.0",
+  "private": false,
+  "type": "module",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QB-Objx/Objx"
+  },
+  "homepage": "https://github.com/QB-Objx/Objx",
+  "bugs": {
+    "url": "https://github.com/QB-Objx/Objx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@qbobjx/core": "0.3.0",
+    "@qbobjx/validation": "0.3.0"
+  }
+}

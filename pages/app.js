@@ -19,6 +19,11 @@ const installPresets = {
     code: `npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express rxjs reflect-metadata`,
     note: 'Add your chosen runtime packages too, for example @qbobjx/core + @qbobjx/postgres-driver + @qbobjx/plugins.',
   },
+  fullstack: {
+    title: 'Fullstack Fetch integration',
+    code: `npm install @qbobjx/fullstack`,
+    note: 'Use this package in runtimes built on Web Fetch Request/Response contracts, together with your selected OBJX driver packages.',
+  },
   tooling: {
     title: 'Codegen and operational tooling',
     code: `npm install -D @qbobjx/codegen`,
