@@ -43,7 +43,8 @@
     "smoke:packages": "npm run build && node scripts/smoke-install.mjs",
     "typecheck": "tsc -b --pretty",
     "test:integration": "npm run build && node tests/integration.test.mjs",
-    "test": "npm run build && node tests/session.test.mjs && node tests/codegen.test.mjs && node tests/validation.test.mjs",
+    "test:fullstack": "npm run build && node tests/fullstack.test.mjs",
+    "test": "npm run build && node tests/session.test.mjs && node tests/codegen.test.mjs && node tests/validation.test.mjs && node tests/fullstack.test.mjs",
     "version-packages": "npx @changesets/cli@2.29.7 version"
   },
   "devDependencies": {

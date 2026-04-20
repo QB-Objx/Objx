@@ -46,6 +46,9 @@
       ],
       "@qbobjx/nestjs": [
         "packages/nestjs/src/index.ts"
+      ],
+      "@qbobjx/fullstack": [
+        "packages/fullstack/src/index.ts"
       ]
     }
   }

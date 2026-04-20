@@ -22,6 +22,7 @@ Published workspace packages:
 - `@qbobjx/postgres-driver`: official Postgres session/driver
 - `@qbobjx/mysql-driver`: official MySQL session/driver
 - `@qbobjx/nestjs`: official NestJS integration with dynamic module, request context, and validation filter
+- `@qbobjx/fullstack`: official fullstack integration for Fetch runtimes
 - `@qbobjx/plugins`: official plugins
 - `@qbobjx/codegen`: introspection, templates, codegen, migrations, and seeds
 - `@qbobjx/validation`: official validation adapters and runtime contracts
@@ -56,6 +57,12 @@ For NestJS integration:
 
 ```bash
 npm install @qbobjx/nestjs @nestjs/common @nestjs/core @nestjs/platform-express rxjs reflect-metadata
+```
+
+For fullstack Fetch runtimes:
+
+```bash
+npm install @qbobjx/fullstack
 ```
 
 ## Quick Start
@@ -1031,6 +1038,7 @@ npm run codegen -- seed --dialect sqlite3 --database ./app.sqlite --dir ./db/see
 - `examples/complex-runtime`: context, plugins, graph ops, nested eager loading, transactions, and raw SQL
 - `examples/express-api`: REST API with Express, SQLite, snake_case physical columns, validation, and CRUD
 - `examples/nestjs-api`: NestJS API with `@qbobjx/nestjs`, migrations, seeds, and snake_case physical columns
+- `examples/react-router-crud`: fullstack app with React Router + `@qbobjx/fullstack` and simple SQLite CRUD
 - `examples/benchmarks`: compiler/runtime microbenchmark suite
 - `benchmarks`: real benchmark against `OBJX`, `Prisma`, `Sequelize`, `Knex`, `Drizzle`, and `TypeORM`
 
