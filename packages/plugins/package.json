@@ -1,6 +1,6 @@
 {
   "name": "@qbobjx/plugins",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "type": "module",
   "files": [
@@ -27,6 +27,6 @@
     }
   },
   "dependencies": {
-    "@qbobjx/core": "0.3.0"
+    "@qbobjx/core": "0.4.0"
   }
 }
