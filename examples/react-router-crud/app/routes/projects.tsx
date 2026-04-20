@@ -1,7 +1,7 @@
 import { Form, useLoaderData } from 'react-router';
 import { defineObjxAction, defineObjxLoader, mapObjxErrorToResponse } from '@qbobjx/fullstack';
-import { Project } from '../lib/models';
-import { session } from '../lib/objx.server';
+import { session } from '../lib/objx.server.js';
+import { Project } from '../lib/models.js';
 
 type ProjectRow = {
   id: number;
@@ -19,7 +19,7 @@ const baseLoader = defineObjxLoader(session, async () => {
   );
 
   return Response.json({
-    data: rows as readonly ProjectRow[],
+    data: rows,
   });
 });
 
@@ -27,7 +27,8 @@ export async function loader(args: { request: Request }) {
   return baseLoader(args);
 }
 
-const baseAction = defineObjxAction(session, async ({ request }) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const baseAction = defineObjxAction(session, async ({ request }: any) => {
   const formData = await request.formData();
   const intent = String(formData.get('intent') ?? 'create');
 
@@ -45,7 +46,8 @@ const baseAction = defineObjxAction(session, async ({ request }) => {
     await session.insertGraph(Project, {
       name,
       status: status || 'planned',
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     return new Response(null, {
       status: 303,
