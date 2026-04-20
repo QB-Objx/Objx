@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/.tsbuildinfo',
       '**/*.d.ts',
+      '**/.react-router/**',
       'benchmarks/**/generated/**',
       'benchmarks/**/out/**',
     ],
