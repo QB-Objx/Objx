@@ -310,3 +310,5 @@ export function createTenantScopePlugin(
     },
   });
 }
+
+export * from './postgres.js';

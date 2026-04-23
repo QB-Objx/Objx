@@ -6,10 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>OBJX | SQL-first ORM for teams that care about runtime</title>
+    <title>OBJX | PostgreSQL-first ORM runtime for TypeScript</title>
     <meta
       name="description"
-      content="OBJX is a SQL-first ORM for TypeScript with an embedded SQL engine, graph runtime, official drivers, fullstack Fetch integration, and benchmark-backed performance."
+      content="OBJX is a PostgreSQL-first ORM runtime for TypeScript with SQL-native primitives (queue, outbox, search, cache, vector, RLS), while keeping first-class support for SQLite and MySQL."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -26,11 +26,11 @@
         </a>
 
         <nav class="site-nav" aria-label="Primary">
+          <a href="#pg-platform">Postgres Platform</a>
           <a href="#benchmark">Benchmark</a>
           <a href="#install">Install</a>
+          <a href="#postgres-rls">RLS</a>
           <a href="#models">Models</a>
-          <a href="#postgres-rls">Postgres RLS</a>
-          <a href="#nestjs">NestJS</a>
           <a href="#workflow">Workflow</a>
         </nav>
 
@@ -43,32 +43,32 @@
       <main>
         <section class="hero" id="top">
           <div class="hero-copy">
-            <p class="eyebrow">Modern relational runtime</p>
-            <h1>The ORM that wants the benchmark, not the excuse.</h1>
+            <p class="eyebrow">PostgreSQL-first runtime</p>
+            <h1>Postgres is the platform. OBJX is the control plane.</h1>
             <p class="hero-text">
-              OBJX keeps SQL visible, types tight, graph operations first-class, and runtime
-              overhead under pressure. It ships with an embedded SQL engine, official SQLite,
-              Postgres, and MySQL drivers, real tooling, and an opinionated NestJS module.
+              OBJX was designed to unlock PostgreSQL as your primary app platform: queue, outbox events,
+              full-text search, cache patterns, vector similarity, JSONB, RLS, and observability.
+              We support SQLite and MySQL officially, but our product strategy is unapologetically Postgres-first.
             </p>
 
             <div class="hero-actions">
-              <a class="primary-link" href="#benchmark">See the numbers</a>
-              <a class="secondary-link" href="#install">Install OBJX</a>
+              <a class="primary-link" href="#pg-platform">Explore Postgres APIs</a>
+              <a class="secondary-link" href="#benchmark">See benchmark proof</a>
             </div>
 
             <ul class="hero-pills" aria-label="Highlights">
-              <li>Embedded SQL compiler and execution runtime</li>
-              <li>Graph ops: <code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
-              <li>Typed migrations, seeds, introspection, and starter templates</li>
-              <li>Official NestJS and fullstack Fetch packages with request-context helpers</li>
-              <li>Repository examples for Express, NestJS, and React Router CRUD</li>
+              <li>Postgres specialist runtime: queue, outbox, cache, search, vector, JSONB, RLS</li>
+              <li>SQL-first graph ops: <code>insertGraph</code>, <code>upsertGraph</code>, eager loading</li>
+              <li>ExecutionContext + transaction-bound runtime for predictable orchestration</li>
+              <li>Official drivers: PostgreSQL-first, with SQLite and MySQL maintained</li>
+              <li>Typed tooling: migrations, seeds, introspection, codegen, NestJS/fullstack adapters</li>
             </ul>
           </div>
 
           <aside class="hero-panel" aria-label="Benchmark summary">
             <div class="hero-score">
               <p class="panel-label">Current repo benchmark</p>
-              <h2>OBJX wins <span data-hero-win-count>4/6</span> Postgres scenarios.</h2>
+              <h2>Postgres is where OBJX pushes hardest: <span data-hero-win-count>4/6</span> wins now.</h2>
               <p class="panel-text">
                 The site uses the checked-in benchmark snapshot from this repository, not a mocked
                 marketing table.
@@ -85,6 +85,53 @@
               <div class="mini-chart-body" data-hero-chart></div>
             </div>
           </aside>
+        </section>
+
+        <section class="section pg-platform" id="pg-platform">
+          <div class="section-heading">
+            <p class="eyebrow">Postgres platform</p>
+            <h2>One database. One runtime. Less operational fragmentation.</h2>
+            <p>
+              OBJX treats PostgreSQL as the center of your architecture. Instead of stitching many
+              infra services early, you can run core primitives in SQL-native workflows while
+              preserving explicit contracts and type-safe paths.
+            </p>
+          </div>
+
+          <div class="pg-platform-grid">
+            <article class="pg-card pg-card-primary">
+              <h3>Postgres specialist APIs</h3>
+              <ul>
+                <li><strong>Queue:</strong> SKIP LOCKED workers, retry/backoff, DLQ.</li>
+                <li><strong>Events:</strong> transactional outbox + LISTEN/NOTIFY fanout.</li>
+                <li><strong>Search:</strong> tsvector/tsquery rank + highlights.</li>
+                <li><strong>Vector:</strong> pgvector similarity + relational filters.</li>
+              </ul>
+            </article>
+
+            <article class="pg-card">
+              <h3>Operational contracts</h3>
+              <ul>
+                <li>Internal schema provisioning with migration registry.</li>
+                <li>ExecutionContext-aware runtime requests.</li>
+                <li>Background worker handles with graceful control.</li>
+                <li>Built-in runtime metrics and query linting hooks.</li>
+              </ul>
+            </article>
+
+            <article class="pg-card">
+              <h3>Multi-database reality</h3>
+              <p>
+                We support SQLite and MySQL as first-class drivers. But when your product needs
+                deeper relational + operational power, OBJX optimizes for PostgreSQL first.
+              </p>
+              <div class="db-tags">
+                <span class="db-tag db-tag-pg">PostgreSQL · Primary</span>
+                <span class="db-tag">SQLite · Supported</span>
+                <span class="db-tag">MySQL · Supported</span>
+              </div>
+            </article>
+          </div>
         </section>
 
         <section class="section benchmark-section" id="benchmark">
