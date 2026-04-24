@@ -51,63 +51,92 @@
             <main>
                 <section class="hero" id="top">
                     <div class="hero-copy">
-                        <p class="eyebrow">PostgreSQL-first runtime</p>
+                        <p class="eyebrow">Typed SQL runtime</p>
                         <h1>
-                            Postgres is the platform. OBJX is the control plane.
+                            SQL-first ORM runtime for TypeScript and PostgreSQL.
                         </h1>
                         <p class="hero-text">
-                            OBJX was designed to unlock PostgreSQL as your
-                            primary app platform: queue, outbox events,
-                            full-text search, cache patterns, vector similarity,
-                            JSONB, RLS, and observability. We support SQLite and
-                            MySQL officially, but our product strategy is
-                            unapologetically Postgres-first.
+                            OBJX combines typed models, SQL compilation,
+                            execution context, graph operations, and
+                            PostgreSQL-oriented runtime APIs in one runtime.
+                            SQLite and MySQL remain supported through official
+                            drivers.
                         </p>
 
                         <div class="hero-actions">
                             <a class="primary-link" href="#pg-platform"
-                                >Explore Postgres APIs</a
+                                >Inspect runtime surface</a
                             >
                             <a class="secondary-link" href="#benchmark"
-                                >See benchmark proof</a
+                                >Inspect benchmark data</a
                             >
                         </div>
 
                         <ul class="hero-pills" aria-label="Highlights">
                             <li>
-                                Postgres runtime APIs: queue, outbox, cache,
-                                search, vector, JSONB, RLS
+                                PostgreSQL runtime APIs: queue, outbox, cache,
+                                search, vector, JSONB, and RLS
                             </li>
                             <li>
-                                SQL-first graph ops: <code>insertGraph</code>,
-                                <code>upsertGraph</code>, eager loading
+                                Graph operations:
+                                <code>insertGraph</code>,
+                                <code>upsertGraph</code>, <code>relate</code>,
+                                and
+                                <code>unrelate</code>
                             </li>
                             <li>
-                                ExecutionContext + transaction-bound runtime for
-                                predictable orchestration
+                                ExecutionContext, nested transactions, and
+                                predictable hydration paths
                             </li>
                             <li>
-                                Official drivers: PostgreSQL-first, with SQLite
-                                and MySQL maintained
+                                Official drivers for PostgreSQL, SQLite, and
+                                MySQL
                             </li>
                             <li>
-                                Typed tooling: migrations, seeds, introspection,
-                                codegen, NestJS/fullstack adapters
+                                Codegen, migrations, seeds, validation, NestJS,
+                                and fullstack adapters
                             </li>
                         </ul>
+
+                        <div class="hero-stats" aria-label="Project snapshot">
+                            <article class="hero-stat">
+                                <span class="hero-stat-label">Packages</span>
+                                <strong>10</strong>
+                                <p>
+                                    Core runtime, drivers, plugins, validation,
+                                    codegen, and framework adapters.
+                                </p>
+                            </article>
+                            <article class="hero-stat">
+                                <span class="hero-stat-label">Dialects</span>
+                                <strong>3</strong>
+                                <p>
+                                    PostgreSQL, SQLite, and MySQL with official
+                                    support.
+                                </p>
+                            </article>
+                            <article class="hero-stat">
+                                <span class="hero-stat-label">Focus</span>
+                                <strong>Predictable SQL</strong>
+                                <p>
+                                    Typed query building, explicit runtime
+                                    behavior, and database-aware extensions.
+                                </p>
+                            </article>
+                        </div>
                     </div>
 
                     <aside class="hero-panel" aria-label="Benchmark summary">
                         <div class="hero-score">
                             <p class="panel-label">Current repo benchmark</p>
                             <h2>
-                                Postgres is where OBJX pushes hardest:
-                                <span data-hero-win-count>4/6</span> wins now.
+                                Repository benchmark snapshot:
+                                <span data-hero-win-count>4/6</span> scenario
+                                leads.
                             </h2>
                             <p class="panel-text">
-                                The site uses the checked-in benchmark snapshot
-                                from this repository, not a mocked marketing
-                                table.
+                                This summary is rendered from benchmark data
+                                checked into the repository.
                             </p>
                         </div>
 
@@ -125,18 +154,43 @@
 
                 <section class="section pg-platform" id="pg-platform">
                     <div class="section-heading">
-                        <p class="eyebrow">Postgres platform</p>
+                        <p class="eyebrow">PostgreSQL runtime surface</p>
                         <h2>
-                            One database. One runtime. Less operational
-                            fragmentation.
+                            SQL-native application primitives on top of one
+                            runtime.
                         </h2>
                         <p>
-                            OBJX treats PostgreSQL as the center of your
-                            architecture. Instead of stitching many infra
-                            services early, you can run core primitives in
-                            SQL-native workflows while preserving explicit
-                            contracts and type-safe paths.
+                            OBJX exposes PostgreSQL-specific capabilities as
+                            typed runtime APIs while keeping execution context,
+                            transaction control, and query composition explicit.
                         </p>
+                    </div>
+
+                    <div
+                        class="platform-strip"
+                        aria-label="Platform positioning"
+                    >
+                        <article class="platform-chip">
+                            <span>Database primitives</span>
+                            <strong
+                                >Queue, outbox, cache, search, vector, and
+                                RLS</strong
+                            >
+                        </article>
+                        <article class="platform-chip">
+                            <span>Runtime contracts</span>
+                            <strong
+                                >ExecutionContext, transactions, hydration, and
+                                plugins</strong
+                            >
+                        </article>
+                        <article class="platform-chip">
+                            <span>Operational path</span>
+                            <strong
+                                >Codegen, examples, benchmarks, NestJS, and
+                                fullstack adapters</strong
+                            >
+                        </article>
                     </div>
 
                     <div class="pg-platform-grid">
@@ -184,12 +238,12 @@
                         </article>
 
                         <article class="pg-card">
-                            <h3>Multi-database reality</h3>
+                            <h3>Dialect support</h3>
                             <p>
-                                We support SQLite and MySQL as first-class
-                                drivers. But when your product needs deeper
-                                relational + operational power, OBJX optimizes
-                                for PostgreSQL first.
+                                SQLite and MySQL remain supported through
+                                official drivers. PostgreSQL receives the deeper
+                                runtime surface and the broadest set of
+                                SQL-native extensions.
                             </p>
                             <div class="db-tags">
                                 <span class="db-tag db-tag-pg"
@@ -206,14 +260,13 @@
                     <div class="section-heading">
                         <p class="eyebrow">Benchmark</p>
                         <h2>
-                            Performance is part of the product, not an
-                            afterthought.
+                            Checked-in benchmark data, not synthetic claims.
                         </h2>
                         <p>
-                            These charts come from the benchmark suite in the
-                            repo. The official run path is the Docker profile,
-                            so other teams can reproduce the same workload
-                            instead of trusting a screenshot.
+                            These charts are generated from the benchmark suite
+                            in the repository. The recommended run path uses the
+                            Docker profile so the same workload can be
+                            reproduced locally.
                         </p>
                     </div>
 
@@ -225,15 +278,13 @@
                     <div class="benchmark-shell">
                         <div
                             class="benchmark-toolbar"
-                            role="tablist"
                             aria-label="Benchmark views"
                         >
                             <button
                                 type="button"
                                 class="benchmark-tab is-active"
                                 data-benchmark-view="throughput"
-                                role="tab"
-                                aria-selected="true"
+                                aria-pressed="true"
                             >
                                 Postgres field test
                             </button>
@@ -241,8 +292,7 @@
                                 type="button"
                                 class="benchmark-tab"
                                 data-benchmark-view="transactions"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 Transaction overhead
                             </button>
@@ -250,8 +300,7 @@
                                 type="button"
                                 class="benchmark-tab"
                                 data-benchmark-view="compiler"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 Compiler cost profile
                             </button>
@@ -318,25 +367,26 @@ npm run benchmark</code></pre>
                 <section class="section" id="install">
                     <div class="section-heading">
                         <p class="eyebrow">Install</p>
-                        <h2>Pick the stack you actually need.</h2>
+                        <h2>
+                            Install only the packages required by your stack.
+                        </h2>
                         <p>
-                            OBJX is split by responsibility. Keep the runtime
-                            lean or compose the whole platform.
+                            OBJX is split by responsibility so runtime, drivers,
+                            tooling, and framework adapters can be composed
+                            explicitly.
                         </p>
                     </div>
 
                     <div class="install-shell">
                         <div
                             class="install-tabs"
-                            role="tablist"
                             aria-label="Installation presets"
                         >
                             <button
                                 type="button"
                                 class="install-tab is-active"
                                 data-install-target="sqlite"
-                                role="tab"
-                                aria-selected="true"
+                                aria-pressed="true"
                             >
                                 SQLite
                             </button>
@@ -344,8 +394,7 @@ npm run benchmark</code></pre>
                                 type="button"
                                 class="install-tab"
                                 data-install-target="postgres"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 Postgres
                             </button>
@@ -353,8 +402,7 @@ npm run benchmark</code></pre>
                                 type="button"
                                 class="install-tab"
                                 data-install-target="mysql"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 MySQL
                             </button>
@@ -362,8 +410,7 @@ npm run benchmark</code></pre>
                                 type="button"
                                 class="install-tab"
                                 data-install-target="nestjs"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 NestJS
                             </button>
@@ -371,8 +418,7 @@ npm run benchmark</code></pre>
                                 type="button"
                                 class="install-tab"
                                 data-install-target="fullstack"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 Fullstack Fetch
                             </button>
@@ -380,8 +426,7 @@ npm run benchmark</code></pre>
                                 type="button"
                                 class="install-tab"
                                 data-install-target="tooling"
-                                role="tab"
-                                aria-selected="false"
+                                aria-pressed="false"
                             >
                                 Tooling
                             </button>
@@ -410,13 +455,13 @@ npm run benchmark</code></pre>
                     <div class="section-heading">
                         <p class="eyebrow">Modeling</p>
                         <h2>
-                            Use one model shape across type inference,
-                            hydration, and graph runtime.
+                            One model definition across type inference,
+                            hydration, and graph operations.
                         </h2>
                         <p>
-                            Advanced column builders, default factories, codecs,
-                            naming strategy, and relation metadata are all part
-                            of the same core model API.
+                            Column builders, naming strategy, codecs, defaults,
+                            and relation metadata live in the same core model
+                            surface.
                         </p>
                     </div>
 
@@ -530,34 +575,60 @@ export const Project = defineModel({
                 </section>
 
                 <section class="section two-column" id="postgres-rls">
-                    <div>
-                        <p class="eyebrow">Postgres RLS</p>
+                    <div class="story-copy">
+                        <p class="eyebrow">PostgreSQL RLS</p>
                         <h2>
-                            Tenant predicates are not the same thing as
+                            Request context can be projected into
                             database-enforced RLS.
                         </h2>
                         <p>
-                            OBJX now supports a first-class bridge from request
-                            context into
-                            <code>set_config(...)</code> at transaction start.
-                            That means you can keep using PostgreSQL policies
-                            based on <code>current_setting(...)</code> without
-                            hand-wiring the same ceremony around every use case.
+                            OBJX can bind execution context values into
+                            <code>set_config(...)</code> at transaction start,
+                            so PostgreSQL policies based on
+                            <code>current_setting(...)</code> can participate in
+                            the same request flow.
                         </p>
-                        <ul class="detail-list">
-                            <li>
-                                <code>createTenantScopePlugin()</code> handles
-                                SQL-level filtering in the ORM
-                            </li>
-                            <li>
-                                <code>executionContextSettings</code> handles
-                                PostgreSQL session state for RLS
-                            </li>
-                            <li>
-                                both can run together when you want app-level
-                                and DB-level enforcement
-                            </li>
-                        </ul>
+
+                        <div class="story-highlights">
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >ORM layer</span
+                                >
+                                <strong
+                                    ><code
+                                        >createTenantScopePlugin()</code
+                                    ></strong
+                                >
+                                <p>
+                                    Applies SQL-level filtering when you want
+                                    application-side tenant scoping.
+                                </p>
+                            </article>
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >Database layer</span
+                                >
+                                <strong
+                                    ><code
+                                        >executionContextSettings</code
+                                    ></strong
+                                >
+                                <p>
+                                    Projects request context into PostgreSQL
+                                    session state for true policy enforcement.
+                                </p>
+                            </article>
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >Recommended posture</span
+                                >
+                                <strong>Use both together</strong>
+                                <p>
+                                    Keep app-level ergonomics and DB-level
+                                    guarantees without duplicating setup code.
+                                </p>
+                            </article>
+                        </div>
                     </div>
 
                     <div class="code-card">
@@ -606,37 +677,61 @@ await executionContextManager.run(
                 </section>
 
                 <section class="section two-column" id="nestjs">
-                    <div>
+                    <div class="story-copy">
                         <p class="eyebrow">NestJS</p>
                         <h2>
-                            Use the official module, not a pile of custom
-                            providers.
+                            Official module, typed session access, and request
+                            context wiring.
                         </h2>
                         <p>
-                            <code>@qbobjx/nestjs</code> ships a dynamic module,
-                            typed session host, request context, and validation
-                            mapping so the database layer feels like part of the
-                            app, not an integration tax.
+                            <code>@qbobjx/nestjs</code> provides a dynamic
+                            module, typed session host, request context support,
+                            and validation mapping for applications that want
+                            explicit framework integration.
                         </p>
-                        <ul class="detail-list">
-                            <li>
-                                <code>ObjxModule.forRoot(...)</code> and
-                                <code>forRootAsync(...)</code>
-                            </li>
-                            <li>
-                                <code>ObjxSessionHost&lt;TSession&gt;</code> for
-                                typed access without decorator noise
-                            </li>
-                            <li>
-                                request values from headers already flow into
-                                the execution context
-                            </li>
-                            <li>
-                                Postgres RLS can piggyback on the same request
-                                context through
-                                <code>executionContextSettings</code>
-                            </li>
-                        </ul>
+
+                        <div class="story-highlights">
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >Module</span
+                                >
+                                <strong
+                                    ><code
+                                        >ObjxModule.forRoot(...)</code
+                                    ></strong
+                                >
+                                <p>
+                                    Boot the runtime once and keep the framework
+                                    wiring explicit and reusable.
+                                </p>
+                            </article>
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >Typed access</span
+                                >
+                                <strong
+                                    ><code
+                                        >ObjxSessionHost&lt;TSession&gt;</code
+                                    ></strong
+                                >
+                                <p>
+                                    Use one typed session surface instead of
+                                    repeating custom decorators and ad hoc
+                                    providers.
+                                </p>
+                            </article>
+                            <article class="story-highlight">
+                                <span class="story-highlight-label"
+                                    >Request context</span
+                                >
+                                <strong>Headers to execution context</strong>
+                                <p>
+                                    Tenant and actor values can flow into
+                                    transactions and Postgres RLS bindings
+                                    automatically.
+                                </p>
+                            </article>
+                        </div>
                     </div>
 
                     <div class="code-card">
@@ -683,14 +778,12 @@ export class AppModule {}</code></pre>
                     <div class="section-heading">
                         <p class="eyebrow">Operational workflow</p>
                         <h2>
-                            The runtime ships with the ops story, not just the
-                            query API.
+                            Tooling and operational paths are part of the repo.
                         </h2>
                         <p>
-                            The repo already carries the serious pieces:
-                            codegen, migrations, seeds, examples, Pages docs,
-                            and benchmark suites that can be rerun instead of
-                            reimagined.
+                            The repository already includes codegen, migrations,
+                            seeds, examples, Pages docs, and benchmark suites
+                            that can be rerun directly.
                         </p>
                     </div>
 
@@ -831,7 +924,7 @@ export class AppModule {}</code></pre>
             </main>
 
             <footer class="site-footer">
-                <p>OBJX docs and benchmark story for GitHub Pages.</p>
+                <p>OBJX documentation snapshot for GitHub Pages.</p>
                 <div class="footer-links">
                     <a
                         href="https://github.com/QB-Objx/Objx/blob/main/README.md"

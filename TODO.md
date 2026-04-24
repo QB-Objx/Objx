@@ -6,7 +6,10 @@ Regra:
 - marcar com `x` apenas o que foi implementado e validado;
 - sempre revisar a ordem de execucao depois de concluir um bloco;
 - preferir backlog orientado por impacto real em runtime, DX e adocao;
-- usar benchmark e testes reais para priorizar, nao opiniao.
+- usar benchmark e testes reais para priorizar, nao opiniao;
+- manter este backlog alinhado com `README.md`, docs, benchmarks e estado real do repo;
+- reescrever itens ambigos ou amplos demais antes de expandir o escopo;
+- separar claramente o que e feature core cross-dialeto do que e extensao especifica por dialeto.
 
 ## Norte Do Projeto
 
@@ -36,11 +39,14 @@ Estado ja entregue:
 - [x] graph ops (`insertGraph`, `upsertGraph`, `relate`, `unrelate`)
 - [x] eager loading simples e nested eager loading
 - [x] plugins oficiais (`timestamps`, `soft delete`, `audit trail`, `tenant scope`)
+- [x] hooks basicos de plugin para definicao de modelo, build, execute, resultado e erro
 - [x] `@qbobjx/validation` com adapters oficiais
 - [x] `@qbobjx/codegen` com introspection, templates, migrations e seeds
 - [x] `@qbobjx/nestjs`
+- [x] `@qbobjx/fullstack`
 - [x] docs estaticas para GitHub Pages
 - [x] benchmark real interno com Postgres e MySQL
+- [x] relatorios de benchmark gerados dentro do repo
 
 Snapshot de benchmark real em 2026-04-02:
 - Postgres: `OBJX` esta competitivo em `find-by-id`, `list-page`, `count-active` e `update-active`
@@ -49,7 +55,8 @@ Snapshot de benchmark real em 2026-04-02:
 
 Conclusao:
 - o gargalo principal nao e mais "falta de feature";
-- agora o trabalho e otimizar hot paths, fechar lacunas de modelagem e endurecer DX/adocao.
+- agora o trabalho e otimizar hot paths, fechar lacunas de modelagem e endurecer DX/adocao;
+- o backlog precisa refletir melhor o que ja existe no repo para evitar retrabalho editorial.
 
 ## Proximo Passo Imediato
 
@@ -65,6 +72,13 @@ Conclusao:
 - [x] medir compile vs execute com benchmark separado
 - [x] naming strategy global por sessao
 - [x] adicionar `drizzle` e `typeorm` ao benchmark oficial
+
+## Higiene De Backlog
+
+- [ ] alinhar `TODO.md`, `README.md`, docs e examples com o estado real do repo
+- [ ] separar com mais clareza features core cross-dialeto vs extensoes especificas de Postgres
+- [ ] revisar trimestralmente itens amplos ou vagos para quebrar em entregas testaveis
+- [ ] definir criterio objetivo para marcar benchmark baseline por commit, release ou milestone
 
 ## Fase 0: Fundacao
 
@@ -199,7 +213,8 @@ Conclusao:
 - [x] cache de query plan/compile para builders repetidos
 - [x] medir custo de compile vs execute em cenarios reais
 - [x] estudar cache por assinatura de AST
-- [ ] garantir invalidacao segura em presence de raw SQL e plugins
+- [ ] garantir invalidacao segura em presenca de raw SQL, naming strategy e plugins
+- [ ] adicionar testes de regressao para cache, SQL bruto e combinacoes com hooks/plugins
 
 ## Fase 11: Modelagem E Naming Strategy
 
@@ -216,7 +231,7 @@ Conclusao:
 
 - [x] `camelCase <-> snake_case` como estrategia configuravel
 - [x] estrategia por sessao
-- [ ] estrategia por modelo
+- [ ] contrato explicito para override de naming por modelo sem conflitar com `dbName` e metadata
 - [x] estrategia usada por codegen e templates
 
 ### 11.3 Tipos De Coluna Avancados
@@ -244,6 +259,7 @@ Conclusao:
 - [x] CTE / `with`
 - [ ] `union` / `unionAll`
 - [ ] `case when`
+- [ ] API consistente para expressoes avancadas sem depender de strings como caminho principal
 
 ### 12.2 Write Capabilities
 
@@ -251,7 +267,8 @@ Conclusao:
 - [ ] bulk update estrategico
 - [ ] `insert ... on conflict` / `on duplicate key`
 - [ ] upsert nativo por dialeto
-- [ ] lock hints (`for update`, `skip locked`, etc.)
+- [ ] lock hints no query builder (`for update`, `skip locked`, etc.)
+- [ ] estrategia explicita para writes de alto volume sem degradar tipagem nem previsibilidade
 
 ### 12.3 Projection E Inference
 
@@ -268,18 +285,18 @@ Conclusao:
 - [ ] controle de profundidade e batch size
 - [ ] graph ops com melhor explain/debug trace
 - [ ] benchmark especifico de graph ops vs abordagem manual
+- [ ] testes com datasets grandes e perfis de memoria/roundtrip por tamanho de grafo
 
 ## Fase 14: Plugins Como Plataforma
 
 ### 14.1 API De Plugin
 
-- [ ] hooks antes de compile
-- [ ] hooks depois de compile
-- [ ] hooks antes de execute
-- [ ] hooks depois de execute
+- [x] hooks basicos de query/result/error
+- [ ] hooks assincronos de plugin
 - [ ] hooks de transacao
+- [ ] contexto estavel para metadata de compile/execute
 - [ ] capacidade de extender AST
-- [ ] capacidade de extender hydration/serialization
+- [ ] capacidade de extender hydration/materialization/serialization
 
 ### 14.2 Runtime De Plugin
 
@@ -287,11 +304,12 @@ Conclusao:
 - [ ] deduplicacao de plugin entre sessao e modelo
 - [ ] isolamento de metadata por plugin
 - [ ] melhor trace/debug de plugin pipeline
+- [ ] documentar fronteira entre plugin hooks, observers e helpers de sessao
 
 ### 14.3 Plugins Oficiais Futuramente
 
 - [ ] optimistic locking
-- [ ] caching
+- [ ] helpers de caching cross-dialeto
 - [ ] row level security helper
 - [ ] outbox/audit persistente
 - [ ] multitenancy avancada
@@ -320,9 +338,11 @@ Conclusao:
 
 ### 16.2 Outros Frameworks
 
+- [x] pacote `@qbobjx/fullstack`
 - [ ] Fastify example oficial
 - [ ] Next.js backend example
 - [ ] worker/background jobs example
+- [ ] documentar quando usar `@qbobjx/fullstack` vs integracoes especificas de framework
 
 ## Fase 17: Tooling De Producao
 
@@ -332,6 +352,7 @@ Conclusao:
 - [ ] generated models com comentarios melhores
 - [ ] filtros de introspection
 - [ ] hooks de pos-geracao
+- [ ] alinhar narrativa publica de introspection multi-dialeto entre README, docs e CLI
 
 ### 17.2 Migrations E Seeds
 
@@ -339,19 +360,22 @@ Conclusao:
 - [ ] plano de migration dry-run com SQL preview
 - [ ] rollback safety checks
 - [ ] seeds idempotentes por estrategia oficial
+- [ ] relatorio claro do que mudou antes de aplicar migrate/seed em ambiente real
 
 ### 17.3 CLI
 
 - [ ] UX melhor para erros de conexao
 - [ ] `objx doctor`
 - [ ] `objx benchmark` como comando do ecossistema
+- [ ] comandos de diagnostico com saida clara para CI e troubleshooting local
 
 ## Fase 18: Testing E Confiabilidade
 
 - [x] fixtures reutilizaveis multi-dialeto
 - [ ] stress tests de concorrencia
 - [ ] testes de isolamento transacional
-- [ ] testes de nested transactions por dialeto
+- [x] smoke tests de nested transactions por dialeto
+- [ ] expandir nested transactions com casos limite por dialeto
 - [ ] testes de graph ops com dados grandes
 - [x] testes de naming strategy
 - [ ] testes de regressao de performance
@@ -362,7 +386,8 @@ Conclusao:
 - [x] adicionar `drizzle`
 - [x] adicionar `typeorm`
 - [ ] adicionar comparativos por cenario e nao so media geral
-- [ ] versionar resultados baseline dentro do repo
+- [x] manter relatorios de benchmark dentro do repo
+- [ ] formalizar baseline por release/milestone com criterio objetivo
 - [ ] gerar relatorio Markdown/CSV automaticamente
 - [ ] rodar benchmark periodico antes de releases maiores
 - [ ] definir metas de throughput por cenario
@@ -391,6 +416,7 @@ Conclusao:
 - [ ] changelog de release mais opinativo
 - [ ] politica de compatibilidade por Node/dialeto
 - [ ] matriz CI por Node 22/24 e por banco
+- [ ] definir support tiers por dialeto e por pacote oficial
 
 ## Ordem Recomendada De Execucao
 
@@ -405,7 +431,8 @@ Conclusao:
 ### Bloco B: Ganho De Benchmark
 
 - [x] benchmark com `drizzle` e `typeorm`
-- [ ] relatorio baseline versionado
+- [x] relatorios de benchmark no repo
+- [ ] baseline formal por release/milestone
 - [ ] comparativos dedicados por cenario (`transaction-read-write`, eager loading, writes)
 - [ ] otimizar transacao Postgres
 - [ ] otimizar eager loading Postgres
@@ -417,9 +444,11 @@ Notas do bloco:
 
 ### Bloco C: Ganho De Produto
 
-- [ ] aggregates/subqueries/CTE
-- [ ] plugins mais poderosos
-- [ ] naming strategy end-to-end no codegen
+- [ ] `exists` / `notExists`
+- [ ] `union` / `unionAll`
+- [ ] `case when`
+- [ ] write capabilities de elite (`bulk`, `on conflict`, locks)
+- [ ] runtime de plugin mais forte
 - [ ] docs/cookbook comparativo
 
 ## Definicao De "Melhor"
@@ -430,7 +459,7 @@ precisamos chegar neste conjunto:
 - [ ] `OBJX` com naming strategy real e sem friccao de `snake_case`
 - [ ] `OBJX` competitivo com `knex`/`sequelize` no Postgres em eager loading e transacao
 - [ ] `OBJX` liderando ou empatando no MySQL nos cenarios principais
-- [ ] query builder mais expressivo com aggregates/subqueries/CTE
+- [ ] query builder mais expressivo com `exists`, `union`, `case when`, aggregates e CTE
 - [ ] runtime de plugin de primeira classe
 - [ ] docs e exemplos que reduzam a distancia ate producao
 - [ ] benchmark publico, reprodutivel e atualizado
