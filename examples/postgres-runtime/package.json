@@ -1,0 +1,16 @@
+{
+  "name": "postgres-runtime-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.mjs",
+    "start:worker": "node src/worker.mjs",
+    "start:dispatcher": "node src/dispatcher.mjs"
+  },
+  "dependencies": {
+    "@qbobjx/core": "file:../../packages/core",
+    "@qbobjx/plugins": "file:../../packages/plugins",
+    "@qbobjx/postgres-driver": "file:../../packages/postgres-driver",
+    "pg": "^8.13.1"
+  }
+}

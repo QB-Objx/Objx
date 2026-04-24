@@ -13,12 +13,26 @@ export interface ModelPluginContext<TModel extends AnyModelDefinition = AnyModel
 
 export type ObjxPluginQueryKind = QueryNode['kind'] | 'raw';
 
+export interface PluginCompiledQueryInfo {
+  readonly sql: string;
+  readonly parameterCount: number;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface PluginTimingInfo {
+  readonly startedAt: Date;
+  readonly finishedAt?: Date;
+  readonly durationMs?: number;
+}
+
 export interface QueryPluginContext {
   readonly model: AnyModelDefinition | undefined;
   readonly executionContext: ExecutionContext | undefined;
   readonly metadata: ReadonlyMap<string, unknown>;
   readonly query?: QueryNode;
   readonly queryKind?: ObjxPluginQueryKind;
+  readonly compiledQuery?: PluginCompiledQueryInfo;
+  readonly timing?: PluginTimingInfo;
 }
 
 export interface ResultPluginContext extends QueryPluginContext {

@@ -29,6 +29,8 @@ import type {
   ModelPluginRegistration,
   ObjxPlugin,
   ObjxPluginRuntime,
+  PluginCompiledQueryInfo,
+  PluginTimingInfo,
 } from '@qbobjx/core';
 import {
   createPluginRuntime,
@@ -1828,6 +1830,10 @@ export class ObjxSession<TTransaction = unknown> {
     registration: ModelPluginRegistration,
     executionContext?: ExecutionContext,
     query?: QueryNode,
+    extras: {
+      readonly compiledQuery?: PluginCompiledQueryInfo;
+      readonly timing?: PluginTimingInfo;
+    } = {},
   ) {
     const context: {
       model: AnyModelDefinition;
@@ -1835,10 +1841,14 @@ export class ObjxSession<TTransaction = unknown> {
       metadata: ReadonlyMap<string, unknown>;
       query?: QueryNode;
       queryKind?: QueryNode['kind'];
+      compiledQuery?: PluginCompiledQueryInfo;
+      timing?: PluginTimingInfo;
     } = {
       model: registration.model,
       executionContext,
       metadata: registration.metadata,
+      ...(extras.compiledQuery ? { compiledQuery: extras.compiledQuery } : {}),
+      ...(extras.timing ? { timing: extras.timing } : {}),
     };
 
     if (query) {
@@ -2314,10 +2324,31 @@ export class ObjxSession<TTransaction = unknown> {
       }
     }
 
-    if (registration && pluginContext && plugins) {
-      this.#pluginRuntime.emitQueryCreate(pluginContext, plugins);
-      this.#pluginRuntime.emitQueryBuild(pluginContext, plugins);
-      this.#pluginRuntime.emitQueryExecute(pluginContext, plugins);
+    const pluginCompiledQuery: PluginCompiledQueryInfo | undefined =
+      registration && pluginContext && plugins
+        ? {
+            sql: compiledQuery.sql,
+            parameterCount: compiledQuery.parameters.length,
+            metadata: compiledQuery.metadata,
+          }
+        : undefined;
+    const pluginQueryContext =
+      registration && pluginContext && plugins
+        ? this.#createPluginContext(
+            registration,
+            executionContext,
+            originalQueryNode,
+            {
+              ...(pluginCompiledQuery ? { compiledQuery: pluginCompiledQuery } : {}),
+              ...(startedAt ? { timing: { startedAt } } : {}),
+            },
+          )
+        : undefined;
+
+    if (registration && pluginQueryContext && plugins) {
+      this.#pluginRuntime.emitQueryCreate(pluginQueryContext, plugins);
+      this.#pluginRuntime.emitQueryBuild(pluginQueryContext, plugins);
+      this.#pluginRuntime.emitQueryExecute(pluginQueryContext, plugins);
     }
 
     if (hasObservers && startedAt) {
@@ -2335,40 +2366,90 @@ export class ObjxSession<TTransaction = unknown> {
         executionContext,
       });
       const materializedResult = await this.#materializeResult(queryNode, normalizedResult, options);
-      const result =
+      const finishedAt = startedAt ? new Date() : undefined;
+      const durationMs =
+        startedAt && finishedAt ? finishedAt.getTime() - startedAt.getTime() : undefined;
+      const resultPluginContext =
         registration && pluginContext && plugins
-          ? this.#pluginRuntime.emitResult(pluginContext, materializedResult, plugins)
+          ? this.#createPluginContext(
+              registration,
+              executionContext,
+              originalQueryNode,
+              {
+                ...(pluginCompiledQuery ? { compiledQuery: pluginCompiledQuery } : {}),
+                ...(startedAt
+                  ? {
+                      timing: {
+                        startedAt,
+                        ...(finishedAt ? { finishedAt } : {}),
+                        ...(durationMs !== undefined ? { durationMs } : {}),
+                      },
+                    }
+                  : {}),
+              },
+            )
+          : undefined;
+      const result =
+        registration && resultPluginContext && plugins
+          ? this.#pluginRuntime.emitResult(resultPluginContext, materializedResult, plugins)
           : materializedResult;
 
       if (hasObservers && startedAt) {
-        const finishedAt = new Date();
+        const observerFinishedAt = finishedAt ?? new Date();
+        const observerDurationMs =
+          durationMs ?? observerFinishedAt.getTime() - startedAt.getTime();
 
         await notifyObservers(this.#observers, (observer) => observer.onQuerySuccess, {
           compiledQuery,
           executionContext,
           startedAt,
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          finishedAt: observerFinishedAt,
+          durationMs: observerDurationMs,
           result,
         } satisfies ObjxQueryTraceEvent);
       }
 
       return result;
     } catch (error) {
-      const pluginError =
+      const finishedAt = startedAt ? new Date() : undefined;
+      const durationMs =
+        startedAt && finishedAt ? finishedAt.getTime() - startedAt.getTime() : undefined;
+      const errorPluginContext =
         registration && pluginContext && plugins
-          ? this.#pluginRuntime.emitError(pluginContext, error, plugins)
+          ? this.#createPluginContext(
+              registration,
+              executionContext,
+              originalQueryNode,
+              {
+                ...(pluginCompiledQuery ? { compiledQuery: pluginCompiledQuery } : {}),
+                ...(startedAt
+                  ? {
+                      timing: {
+                        startedAt,
+                        ...(finishedAt ? { finishedAt } : {}),
+                        ...(durationMs !== undefined ? { durationMs } : {}),
+                      },
+                    }
+                  : {}),
+              },
+            )
+          : undefined;
+      const pluginError =
+        registration && errorPluginContext && plugins
+          ? this.#pluginRuntime.emitError(errorPluginContext, error, plugins)
           : error;
 
       if (hasObservers && startedAt) {
-        const finishedAt = new Date();
+        const observerFinishedAt = finishedAt ?? new Date();
+        const observerDurationMs =
+          durationMs ?? observerFinishedAt.getTime() - startedAt.getTime();
 
         await notifyObservers(this.#observers, (observer) => observer.onQueryError, {
           compiledQuery,
           executionContext,
           startedAt,
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          finishedAt: observerFinishedAt,
+          durationMs: observerDurationMs,
           error: pluginError,
         } satisfies ObjxQueryTraceEvent);
       }

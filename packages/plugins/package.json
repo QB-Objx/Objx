@@ -27,6 +27,7 @@
     }
   },
   "dependencies": {
-    "@qbobjx/core": "0.4.0"
+    "@qbobjx/core": "0.4.0",
+    "@qbobjx/sql-engine": "0.4.0"
   }
 }
