@@ -11,7 +11,7 @@ import { DEFAULT_INTERNAL_SCHEMA } from './shared.js';
 import { createPostgresTimeseriesPlugin } from './timeseries.js';
 import { createPostgresVectorPlugin } from './vector.js';
 
-export type PostgresSpecialistFeature =
+export type PostgresFeature =
   | 'search'
   | 'queue'
   | 'events'
@@ -22,7 +22,7 @@ export type PostgresSpecialistFeature =
   | 'security'
   | 'observability';
 
-const DEFAULT_SPECIALIST_FEATURES: readonly PostgresSpecialistFeature[] = [
+const DEFAULT_POSTGRES_FEATURES: readonly PostgresFeature[] = [
   'search',
   'queue',
   'events',
@@ -34,18 +34,18 @@ const DEFAULT_SPECIALIST_FEATURES: readonly PostgresSpecialistFeature[] = [
   'observability',
 ] as const;
 
-export interface PostgresPluginPresetOptions {
+export interface PostgresPresetOptions {
   readonly schema?: string;
-  readonly include?: readonly PostgresSpecialistFeature[];
+  readonly include?: readonly PostgresFeature[];
   readonly queue?: Omit<PostgresQueuePluginOptions, 'schema'>;
   readonly events?: Omit<PostgresEventsPluginOptions, 'schema'>;
 }
 
-export function createPostgresSpecialistPreset(
-  options: PostgresPluginPresetOptions = {},
+export function createPostgresPreset(
+  options: PostgresPresetOptions = {},
 ): readonly Readonly<ObjxPlugin>[] {
   const schema = options.schema ?? DEFAULT_INTERNAL_SCHEMA;
-  const enabled = new Set(options.include ?? DEFAULT_SPECIALIST_FEATURES);
+  const enabled = new Set(options.include ?? DEFAULT_POSTGRES_FEATURES);
   const plugins: Readonly<ObjxPlugin>[] = [];
 
   if (enabled.has('search')) {
@@ -86,3 +86,18 @@ export function createPostgresSpecialistPreset(
 
   return plugins;
 }
+
+/**
+ * @deprecated Use `PostgresFeature`.
+ */
+export type PostgresSpecialistFeature = PostgresFeature;
+
+/**
+ * @deprecated Use `PostgresPresetOptions`.
+ */
+export type PostgresPluginPresetOptions = PostgresPresetOptions;
+
+/**
+ * @deprecated Use `createPostgresPreset`.
+ */
+export const createPostgresSpecialistPreset = createPostgresPreset;

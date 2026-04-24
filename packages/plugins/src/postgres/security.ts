@@ -1,6 +1,12 @@
 import { definePlugin, type ObjxPlugin } from '@qbobjx/core';
 
-import { type PostgresPluginBaseOptions, withDefaultMetadataKey } from './shared.js';
+import {
+  assertSafeSqlIdentifier,
+  quoteSqlIdentifier,
+  quoteSqlLiteral,
+  type PostgresPluginBaseOptions,
+  withDefaultMetadataKey,
+} from './shared.js';
 
 export interface PostgresSecurityPluginOptions extends PostgresPluginBaseOptions {
   readonly tenantSettingName?: string;
@@ -32,8 +38,21 @@ export function createPostgresSecurityPlugin(
   });
 }
 
+function resolveTableIdentifier(table: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(table));
+}
+
+function resolveColumnIdentifier(column: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(column));
+}
+
+function resolvePolicyIdentifier(policyName: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(policyName));
+}
+
 export function createEnableRlsSql(table: string): string {
-  return `alter table ${table} enable row level security;`;
+  const qualifiedTable = resolveTableIdentifier(table);
+  return `alter table ${qualifiedTable} enable row level security;`;
 }
 
 export function createTenantIsolationPolicySql(options: {
@@ -42,12 +61,16 @@ export function createTenantIsolationPolicySql(options: {
   readonly settingName?: string;
   readonly policyName?: string;
 }): string {
-  const tenantColumn = options.tenantColumn ?? 'tenant_id';
-  const settingName = options.settingName ?? 'objx.tenant_id';
-  const policyName = options.policyName ?? `${options.table}_tenant_isolation`;
-  return `create policy ${policyName} on ${options.table} using (${tenantColumn} = current_setting('${settingName}', true));`;
+  const table = resolveTableIdentifier(options.table);
+  const tenantColumn = resolveColumnIdentifier(options.tenantColumn ?? 'tenant_id');
+  const settingName = quoteSqlLiteral(options.settingName ?? 'objx.tenant_id');
+  const policyName = resolvePolicyIdentifier(
+    options.policyName ?? `${options.table}_tenant_isolation`,
+  );
+
+  return `create policy ${policyName} on ${table} using (${tenantColumn} = current_setting(${settingName}, true));`;
 }
 
 export function createSetLocalTenantSql(settingName = 'objx.tenant_id'): string {
-  return `select set_config('${settingName}', $1, true);`;
+  return `select set_config(${quoteSqlLiteral(settingName)}, $1, true);`;
 }

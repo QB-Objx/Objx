@@ -87,32 +87,32 @@ If your database enforces tenant isolation through PostgreSQL RLS, configure
 `createPostgresSession({ executionContextSettings: ... })` in `@qbobjx/postgres-driver` and execute
 protected work inside `session.transaction(...)`.
 
-## PostgreSQL Specialist Suite (experimental)
+## PostgreSQL Runtime Suite (experimental)
 
-OBJX now ships a PostgreSQL-focused suite directly in `@qbobjx/plugins` with internal-runtime defaults intended for `objx_internal` tables managed by the ORM.
+OBJX now ships a PostgreSQL-focused runtime suite directly in `@qbobjx/plugins` with internal defaults intended for `objx_internal` tables managed by the ORM.
 
 ```ts
 import {
   createPostgresEventsPlugin,
+  createPostgresPreset,
   createPostgresQueuePlugin,
   createPostgresSearchPlugin,
-  createPostgresSpecialistPreset,
 } from '@qbobjx/plugins';
 
-const specialistPreset = createPostgresSpecialistPreset({
+const runtimePreset = createPostgresPreset({
   schema: 'objx_internal',
   queue: { defaultQueue: 'default' },
   events: { notifyChannel: 'objx_events' },
 });
 
 // habilitar apenas queue (cron/jobs)
-const onlyQueue = createPostgresSpecialistPreset({
+const onlyQueue = createPostgresPreset({
   include: ['queue'],
   queue: { defaultQueue: 'cron' },
 });
 
 // habilitar apenas events
-const onlyEvents = createPostgresSpecialistPreset({
+const onlyEvents = createPostgresPreset({
   include: ['events'],
   events: { notifyChannel: 'events_only' },
 });
@@ -134,7 +134,7 @@ const searchPlugin = createPostgresSearchPlugin({
 });
 ```
 
-Included PostgreSQL-specialized plugin factories:
+Included PostgreSQL runtime plugin factories:
 
 - `createPostgresSearchPlugin()`
 - `createPostgresQueuePlugin()`
@@ -145,20 +145,21 @@ Included PostgreSQL-specialized plugin factories:
 - `createPostgresJsonPlugin()`
 - `createPostgresSecurityPlugin()`
 - `createPostgresObservabilityPlugin()`
-- `createPostgresSpecialistPreset()`
+- `createPostgresPreset()`
 - `createPostgresInternalSchemaSql()`
-
 
 Observação: cada plugin vive em módulo próprio dentro de `src/postgres/*`; o preset apenas compõe os plugins que você escolher em `include`.
 
 ## Runtime API (experimental)
 
-Além dos builders SQL, o módulo PostgreSQL agora expõe um runtime de alto nível para executar todos os pontos principais (queue, events, cache, search, vector, timeseries, json, security e observability) sobre qualquer executor com interface `execute(sql, params)`.
+Além dos builders SQL, o módulo PostgreSQL agora expõe um runtime de alto nível para executar queue, events, cache, search, vector, timeseries, json, security e observability.
+
+Você pode usar o runtime com qualquer executor compatível:
 
 ```ts
-import { createPostgresSpecialistRuntime } from '@qbobjx/plugins';
+import { createPostgresRuntime } from '@qbobjx/plugins';
 
-const runtime = createPostgresSpecialistRuntime({
+const runtime = createPostgresRuntime({
   async execute(sql, params = []) {
     return db.execute(sql, params);
   },
@@ -178,11 +179,64 @@ await runtime.events.publish({
 
 O runtime também inclui:
 - `provisionInternalSchema()` para bootstrap automático de tabelas internas (`runtime_migrations`, queue, outbox, cache).
-- `withRequest({ executionContext, transactionId })` para execução com contexto/transação explícitos.
+- `withRequest({ executionContext, transactionId })` para execução com contexto explícito.
 - `runQueueWorker(...)` e `runEventDispatcher(...)` para loops básicos de worker/dispatcher.
 - `metrics()` com contadores operacionais por domínio.
 
-## PostgreSQL Specialist Runtime API guide
+## Driver session integration
+
+O caminho recomendado com o driver oficial é integrar os plugins PostgreSQL com `createPostgresSession(...)` e criar o runtime a partir da própria sessão.
+
+```ts
+import { col, createModelRegistry, defineModel } from '@qbobjx/core';
+import { createPostgresSession } from '@qbobjx/postgres-driver';
+import {
+  createPostgresEventsPlugin,
+  createPostgresIntegration,
+  createPostgresQueuePlugin,
+  createPostgresRuntimeFromSession,
+} from '@qbobjx/plugins';
+
+const RuntimeConfig = defineModel({
+  table: 'runtime_config',
+  columns: {
+    id: col.int().primary(),
+    tenantId: col.text(),
+  },
+  plugins: [
+    createPostgresQueuePlugin({
+      schema: 'objx_internal',
+      defaultQueue: 'default',
+    }),
+    createPostgresEventsPlugin({
+      schema: 'objx_internal',
+      notifyChannel: 'objx_events',
+    }),
+  ],
+});
+
+const registry = createModelRegistry();
+registry.register(RuntimeConfig);
+
+const integration = createPostgresIntegration(registry);
+
+const session = createPostgresSession({
+  pool,
+  executionContextSettings: integration.executionContextSettings,
+});
+
+const runtime = createPostgresRuntimeFromSession(session, {
+  source: registry,
+  config: integration.config,
+});
+```
+
+Essa integração garante que:
+- o runtime use a configuração real vinda dos plugins
+- o driver oficial aplique `set_config(...)` de forma transacional quando necessário
+- fila, outbox, cache e demais APIs compartilhem a mesma base de configuração
+
+## PostgreSQL Runtime API guide
 
 A runtime has one required contract: an executor with `execute(sql, params, request?)`.
 
@@ -196,12 +250,18 @@ type Executor = {
 };
 ```
 
+Também existe integração pronta com `ObjxSession` / `createPostgresSession(...)`:
+
+- `createPostgresSessionExecutor(session, options?)`
+- `createPostgresRuntimeFromSession(session, options?)`
+- `createPostgresRuntimeFromObjxSession(session, options?)`
+
 ### Bootstrapping and lifecycle
 
 ```ts
-import { createPostgresSpecialistRuntime } from '@qbobjx/plugins';
+import { createPostgresRuntime } from '@qbobjx/plugins';
 
-const runtime = createPostgresSpecialistRuntime(executor);
+const runtime = createPostgresRuntime(executor);
 
 // Creates objx_internal + runtime_migrations + queue/outbox/cache tables.
 await runtime.provisionInternalSchema({
@@ -210,7 +270,7 @@ await runtime.provisionInternalSchema({
 });
 
 // Bind an explicit request/transaction context for all subsequent calls.
-const trxRuntime = runtime.withRequest({ transactionId: 'trx_123' });
+const contextualRuntime = runtime.withRequest({ executionContext });
 ```
 
 ### Queue API
@@ -301,5 +361,4 @@ const snapshot = runtime.metrics();
 console.log(snapshot.queue.enqueued, snapshot.events.published, snapshot.cache.hits);
 ```
 
-
-Functional project example: `examples/postgres-specialist-runtime`.
+Functional project example: `examples/postgres-runtime`.

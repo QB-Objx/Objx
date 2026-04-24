@@ -1,6 +1,11 @@
 import { definePlugin, type ObjxPlugin } from '@qbobjx/core';
 
-import { type PostgresPluginBaseOptions, withDefaultMetadataKey } from './shared.js';
+import {
+  assertSafeSqlIdentifier,
+  quoteSqlIdentifier,
+  type PostgresPluginBaseOptions,
+  withDefaultMetadataKey,
+} from './shared.js';
 
 export interface PostgresVectorPluginOptions extends PostgresPluginBaseOptions {
   readonly extensionName?: string;
@@ -35,8 +40,40 @@ export function createPostgresVectorPlugin(
   });
 }
 
-export function createVectorColumnSql(table: string, column = 'embedding', dimensions = 1536): string {
-  return `alter table ${table} add column if not exists ${column} vector(${dimensions});`;
+function resolveTable(table: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(table));
+}
+
+function resolveColumn(column: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(column));
+}
+
+function resolveIndexName(indexName: string): string {
+  return quoteSqlIdentifier(assertSafeSqlIdentifier(indexName));
+}
+
+function resolveOperatorClass(
+  operatorClass: 'vector_cosine_ops' | 'vector_l2_ops' | 'vector_ip_ops' | undefined,
+): 'vector_cosine_ops' | 'vector_l2_ops' | 'vector_ip_ops' {
+  return operatorClass ?? 'vector_cosine_ops';
+}
+
+function resolveDistanceOperator(
+  distanceOperator: '<=>' | '<->' | '<#>' | undefined,
+): '<=>' | '<->' | '<#>' {
+  return distanceOperator ?? '<=>';
+}
+
+export function createVectorColumnSql(
+  table: string,
+  column = 'embedding',
+  dimensions = 1536,
+): string {
+  const qualifiedTable = resolveTable(table);
+  const quotedColumn = resolveColumn(column);
+  const safeDimensions = Math.max(1, Math.trunc(dimensions));
+
+  return `alter table ${qualifiedTable} add column if not exists ${quotedColumn} vector(${safeDimensions});`;
 }
 
 export function createVectorIndexSql(options: {
@@ -46,11 +83,15 @@ export function createVectorIndexSql(options: {
   readonly operatorClass?: 'vector_cosine_ops' | 'vector_l2_ops' | 'vector_ip_ops';
   readonly indexName?: string;
 }): string {
-  const column = options.column ?? 'embedding';
+  const tableName = assertSafeSqlIdentifier(options.table);
+  const columnName = assertSafeSqlIdentifier(options.column ?? 'embedding');
   const method = options.method ?? 'hnsw';
-  const operatorClass = options.operatorClass ?? 'vector_cosine_ops';
-  const indexName = options.indexName ?? `${options.table}_${column}_${method}_idx`;
-  return `create index if not exists ${indexName} on ${options.table} using ${method} (${column} ${operatorClass});`;
+  const operatorClass = resolveOperatorClass(options.operatorClass);
+  const indexName = resolveIndexName(options.indexName ?? `${tableName}_${columnName}_${method}_idx`);
+  const qualifiedTable = resolveTable(tableName);
+  const quotedColumn = resolveColumn(columnName);
+
+  return `create index if not exists ${indexName} on ${qualifiedTable} using ${method} (${quotedColumn} ${operatorClass});`;
 }
 
 export function buildVectorSimilarityQuerySql(options: {
@@ -60,9 +101,11 @@ export function buildVectorSimilarityQuerySql(options: {
   readonly whereSql?: string;
   readonly limit?: number;
 }): string {
-  const column = options.column ?? 'embedding';
-  const distanceOperator = options.distanceOperator ?? '<=>';
+  const qualifiedTable = resolveTable(options.table);
+  const quotedColumn = resolveColumn(options.column ?? 'embedding');
+  const distanceOperator = resolveDistanceOperator(options.distanceOperator);
   const whereClause = options.whereSql ? ` where ${options.whereSql}` : '';
-  const limit = options.limit ?? 20;
-  return `select *, ${column} ${distanceOperator} $1::vector as similarity_distance from ${options.table}${whereClause} order by ${column} ${distanceOperator} $1::vector asc limit ${limit};`;
+  const limit = Math.max(1, Math.trunc(options.limit ?? 20));
+
+  return `select ${qualifiedTable}.*, ${quotedColumn} ${distanceOperator} $1::vector as "similarity_distance" from ${qualifiedTable}${whereClause} order by ${quotedColumn} ${distanceOperator} $1::vector asc limit ${limit};`;
 }

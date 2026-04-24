@@ -1,4 +1,5 @@
 export * from './cache.js';
+export * from './config.js';
 export * from './events.js';
 export * from './internal-schema.js';
 export * from './json.js';
